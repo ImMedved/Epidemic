@@ -2,6 +2,7 @@
 
 #include <Epidemic/Diagnostics/counters.h>
 
+#include <exception>
 #include <stdexcept>
 #include <utility>
 
@@ -42,25 +43,32 @@ std::size_t MainThreadDispatcher::Drain()
     }
 
     std::size_t executed_tasks = 0;
-    try
+    std::exception_ptr first_error;
+    while (!pending_tasks.empty())
     {
-        while (!pending_tasks.empty())
+        auto task = std::move(pending_tasks.front());
+        pending_tasks.pop();
+        try
         {
-            auto task = std::move(pending_tasks.front());
-            pending_tasks.pop();
             task.task();
-            ++executed_tasks;
         }
-    }
-    catch (...)
-    {
-        epidemic::diagnostics::GlobalCounters().Set(epidemic::diagnostics::CounterId::MainThreadTasksExecuted,
-                                                    static_cast<std::int64_t>(executed_tasks));
-        throw;
+        catch (...)
+        {
+            if (!first_error)
+            {
+                first_error = std::current_exception();
+            }
+        }
+        ++executed_tasks;
     }
 
     epidemic::diagnostics::GlobalCounters().Set(epidemic::diagnostics::CounterId::MainThreadTasksExecuted,
                                                 static_cast<std::int64_t>(executed_tasks));
+    if (first_error)
+    {
+        std::rethrow_exception(first_error);
+    }
+
     return executed_tasks;
 }
 

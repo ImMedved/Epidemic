@@ -1,8 +1,14 @@
 #pragma once
 
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <functional>
+#include <limits>
+#include <ratio>
+#include <stdexcept>
+#include <type_traits>
+#include <utility>
 
 namespace epidemic::foundation
 {
@@ -25,20 +31,63 @@ class FrameTime
     }
 
     // Converts any std::chrono duration into the engine-native duration domain.
+    // Non-finite floating inputs and values outside Duration's representable range are rejected.
     template <typename Rep, typename Period> [[nodiscard]] static constexpr FrameTime
-    FromChrono(std::chrono::duration<Rep, Period> duration) noexcept
+    FromChrono(std::chrono::duration<Rep, Period> duration)
     {
-        return FrameTime(std::chrono::duration_cast<Duration>(duration));
+        using source_duration = std::chrono::duration<Rep, Period>;
+        using destination_rep = Duration::rep;
+
+        if constexpr (std::is_same_v<source_duration, Duration>)
+        {
+            return FrameTime(duration);
+        }
+        else if constexpr (std::is_integral_v<Rep> && std::is_integral_v<destination_rep> &&
+                           std::ratio_equal_v<Period, Duration::period>)
+        {
+            if (std::cmp_less(duration.count(), std::numeric_limits<destination_rep>::min()) ||
+                std::cmp_greater(duration.count(), std::numeric_limits<destination_rep>::max()))
+            {
+                throw std::out_of_range("FrameTime duration is outside the native range");
+            }
+            return FrameTime(Duration(static_cast<destination_rep>(duration.count())));
+        }
+        else
+        {
+            using checked_duration = std::chrono::duration<long double, Duration::period>;
+            if constexpr (std::is_floating_point_v<Rep>)
+            {
+                if (!std::isfinite(static_cast<long double>(duration.count())))
+                {
+                    throw std::invalid_argument("FrameTime duration must be finite");
+                }
+            }
+
+            const long double converted = checked_duration(duration).count();
+            if (!std::isfinite(converted))
+            {
+                throw std::out_of_range("FrameTime duration is outside the native range");
+            }
+
+            const long double minimum = static_cast<long double>(std::numeric_limits<destination_rep>::min());
+            const long double maximum = static_cast<long double>(std::numeric_limits<destination_rep>::max());
+            if (converted < minimum || converted > maximum)
+            {
+                throw std::out_of_range("FrameTime duration is outside the native range");
+            }
+
+            return FrameTime(std::chrono::duration_cast<Duration>(duration));
+        }
     }
 
     // Builds a FrameTime from seconds.
-    [[nodiscard]] static FrameTime FromSeconds(double seconds) noexcept
+    [[nodiscard]] static FrameTime FromSeconds(double seconds)
     {
         return FromChrono(std::chrono::duration<double>(seconds));
     }
 
     // Builds a FrameTime from milliseconds.
-    [[nodiscard]] static FrameTime FromMilliseconds(double milliseconds) noexcept
+    [[nodiscard]] static FrameTime FromMilliseconds(double milliseconds)
     {
         return FromChrono(std::chrono::duration<double, std::milli>(milliseconds));
     }
@@ -104,23 +153,34 @@ class FrameIndex
     }
 
     // Returns the next frame index without mutating the current instance.
-    [[nodiscard]] constexpr FrameIndex Next() const noexcept
+    // Throws when UINT64_MAX has no representable successor.
+    [[nodiscard]] constexpr FrameIndex Next() const
     {
+        if (value_ == std::numeric_limits<std::uint64_t>::max())
+        {
+            throw std::overflow_error("FrameIndex overflow");
+        }
         return FrameIndex(value_ + 1);
     }
 
     // Prefix increment advances the frame index in place.
-    constexpr FrameIndex &operator++() noexcept
+    // Throws without modifying the value when UINT64_MAX is reached.
+    constexpr FrameIndex &operator++()
     {
+        if (value_ == std::numeric_limits<std::uint64_t>::max())
+        {
+            throw std::overflow_error("FrameIndex overflow");
+        }
         ++value_;
         return *this;
     }
 
     // Postfix increment returns the previous value and then advances the index.
-    constexpr FrameIndex operator++(int) noexcept
+    // Throws without modifying the value when UINT64_MAX is reached.
+    constexpr FrameIndex operator++(int)
     {
         FrameIndex previous(*this);
-        ++value_;
+        ++(*this);
         return previous;
     }
 
@@ -130,7 +190,7 @@ class FrameIndex
   private:
     std::uint64_t value_{};
 };
-} 
+} // namespace epidemic::foundation
 
 namespace std
 {

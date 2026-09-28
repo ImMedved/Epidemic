@@ -68,6 +68,17 @@ public:
                                      std::uint64_t listener_value,
                                      std::uint32_t listener_generation,
                                      std::uint64_t voice_value);
+    [[nodiscard]] foundation::Result<void> SetEmitterRevisionForTesting(AudioEmitterHandle handle, std::uint64_t revision);
+    void FailNextListenerPublicationForTesting() noexcept { fail_next_listener_publication_for_testing_ = true; }
+    void FailNextVoiceCleanupPreflightForTesting() noexcept { fail_next_voice_cleanup_preflight_for_testing_ = true; }
+    [[nodiscard]] std::size_t PendingVoiceCleanupCountForTesting() const noexcept
+    {
+        return pending_voice_cleanups_.size();
+    }
+    [[nodiscard]] std::size_t PendingListenerCleanupCountForTesting() const noexcept
+    {
+        return pending_listener_cleanups_.size();
+    }
 
 private:
     struct EmitterRecord
@@ -121,17 +132,21 @@ private:
     [[nodiscard]] foundation::Result<AudioClipPayload> ResolvePayload(SoundId id);
     [[nodiscard]] foundation::Result<AudioSpatialState> ReadSpatialState(AudioTransformId transform, bool spatial) const;
     [[nodiscard]] foundation::Result<void> ApplyEmitterSpatialState(EmitterRecord& emitter);
-    [[nodiscard]] foundation::Result<void> ProcessOneShot(const AudioEvent& event);
+    [[nodiscard]] foundation::Result<VoiceOwnership> CreateOneShotVoice(const AudioEvent& event);
     [[nodiscard]] foundation::Result<void> CleanupFinishedOneShots();
+    [[nodiscard]] foundation::Result<void> EnsurePendingVoiceCleanupCapacity(std::size_t additional);
     [[nodiscard]] foundation::Result<void> CleanupPendingVoices();
+    [[nodiscard]] foundation::Result<void> CleanupPendingListeners();
     [[nodiscard]] foundation::Result<void> EnsureCanStartWork() const;
     void RecordCleanupFailure(const foundation::Error& error);
     void RollbackCreatedVoice(IAudioBackend& backend,
                               BackendVoiceHandle voice,
                               std::shared_ptr<const IAudioClipResource> clip_resource = {});
-    void AdvanceMixerFades(RuntimeFrameDuration delta);
+    void RollbackCreatedListener(IAudioBackend& backend, AudioListenerHandle handle) noexcept;
     void ResetFade(EmitterRecord& emitter);
     [[nodiscard]] foundation::Result<void> BeginFade(EmitterRecord& emitter, EmitterState target_state, RuntimeFrameDuration duration);
+    [[nodiscard]] foundation::Result<void> EnsureEmitterRevisionAvailable(const EmitterRecord& emitter) const;
+    void CommitEmitterRevision(EmitterRecord& emitter) noexcept;
     [[nodiscard]] foundation::Result<void> ApplyMainListenerTransform();
     [[nodiscard]] float EffectiveGain(const EmitterRecord& emitter) const;
     [[nodiscard]] EmitterRecord* FindEmitter(AudioEmitterId id);
@@ -163,8 +178,11 @@ private:
     std::vector<AudioEvent> events_;
     std::vector<VoiceOwnership> one_shot_voices_;
     std::vector<VoiceOwnership> pending_voice_cleanups_;
+    std::vector<AudioListenerHandle> pending_listener_cleanups_;
     std::uint64_t cleanup_failures_ = 0;
     bool shutdown_started_ = false;
     bool shutdown_complete_ = false;
+    bool fail_next_listener_publication_for_testing_ = false;
+    bool fail_next_voice_cleanup_preflight_for_testing_ = false;
 };
 } // namespace epidemic::runtime::audio

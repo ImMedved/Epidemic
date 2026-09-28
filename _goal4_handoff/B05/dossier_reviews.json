@@ -1,0 +1,315 @@
+{
+  "modules": {
+    "EngineFramework/GameplayWorldStateOwners/AI": {
+      "Authoritative state": {
+        "correction": "Owns AI profiles/goals/considerations, agents, blackboards, intents, think scheduling indexes, generators, revisions and the bounded AI change journal.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Reviewed current Framework/Foundation public dependencies. B05 introduces no production dependency on another Bxx production directory.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Derived indexes and bounded journal/read models were reviewed with primary state. Fault paths may not publish a mismatched derived view.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "AI evaluators and target/input providers are decision inputs only. Throws/failures are isolated before authoritative agent/intent/schedule publication, with deterministic tie breaking retained.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Numeric bounds, budgets/retention and ID/revision/change-sequence exhaustion are explicit. B05 fixes preserve bounded journal/summary behavior and avoid unchecked signed overflow.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Generators, revisions and change sequence/cursor state are explicit contract boundaries. Exhaustion is rejected before publication and restore validates continuity.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Primary records, indexes, generators, revisions, lifecycle and journal publication were reviewed together, including invalid/stale/duplicate and failure-atomicity paths.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "Snapshot state contains authoritative semantic records and continuity state required by the module. Transient provider/executor bindings are not reused as persistent semantic identities.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Reviewed 90 exact callable rows. Contract/test anchors are in `_goal4_handoff/B05/public_api_anchors.json` and `docs/EngineFramework/AI.md`.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "Reviewed 104 mutation obligations across success, no-op, invalid/precondition and failure semantics.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Read/query surfaces were checked against authoritative records and deterministic derived indexes/order; diagnostic state is not promoted to authority.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Owns AI profiles/goals/considerations, agents, blackboards, intents, think scheduling indexes, generators, revisions and the bounded AI change journal.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "Restore validates into off-state and keeps the live service unchanged on validation/allocation failure; successful restore publishes a self-consistent state and advances/reset journal epoch according to contract.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Lifecycle states, allowed transitions, duplicate/terminal/retry behavior and wrong-lifecycle failures were reviewed against module tests.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "Externally serialized/owner-thread for Goal 4 local correctness. No new thread-safety promise is introduced; Goal 6 owns concurrency qualification.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Knowledge": {
+      "Authoritative state": {
+        "correction": "Owns knowledge profile definitions, knowledge/memory records, relations/contradictions, indexes, generators, revisions and the bounded knowledge change journal.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Reviewed current Framework/Foundation public dependencies. B05 introduces no production dependency on another Bxx production directory.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Derived indexes and bounded journal/read models were reviewed with primary state. Fault paths may not publish a mismatched derived view.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "The admission inventory contains the block\u2019s single external-boundary candidate in Knowledge. Provider/callback failure is reviewed as a local Result/error boundary and may not partially publish graph/index state.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Numeric bounds, budgets/retention and ID/revision/change-sequence exhaustion are explicit. B05 fixes preserve bounded journal/summary behavior and avoid unchecked signed overflow.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Generators, revisions and change sequence/cursor state are explicit contract boundaries. Exhaustion is rejected before publication and restore validates continuity.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Primary records, indexes, generators, revisions, lifecycle and journal publication were reviewed together, including invalid/stale/duplicate and failure-atomicity paths.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "Snapshot state contains authoritative semantic records and continuity state required by the module. Transient provider/executor bindings are not reused as persistent semantic identities.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Reviewed 40 exact callable rows. Contract/test anchors are in `_goal4_handoff/B05/public_api_anchors.json` and `docs/EngineFramework/Knowledge.md`.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "Reviewed 48 mutation obligations across success, no-op, invalid/precondition and failure semantics.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Read/query surfaces were checked against authoritative records and deterministic derived indexes/order; diagnostic state is not promoted to authority.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Owns knowledge profile definitions, knowledge/memory records, relations/contradictions, indexes, generators, revisions and the bounded knowledge change journal.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "Restore validates into off-state and keeps the live service unchanged on validation/allocation failure; successful restore publishes a self-consistent state and advances/reset journal epoch according to contract.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Lifecycle states, allowed transitions, duplicate/terminal/retry behavior and wrong-lifecycle failures were reviewed against module tests.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "Externally serialized/owner-thread for Goal 4 local correctness. No new thread-safety promise is introduced; Goal 6 owns concurrency qualification.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/NavigationSemantics": {
+      "Authoritative state": {
+        "correction": "Owns semantic navigation profiles, layers and links/rules, their indexes, layer identity generator, revisions and the bounded navigation-semantics change journal.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Reviewed current Framework/Foundation public dependencies. B05 introduces no production dependency on another Bxx production directory.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Derived indexes and bounded journal/read models were reviewed with primary state. Fault paths may not publish a mismatched derived view.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "Capability lookup/evaluation is a semantic provider boundary. Failure is not authoritative navigation state and may not leave a partial layer/link/index publication.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Numeric bounds, budgets/retention and ID/revision/change-sequence exhaustion are explicit. B05 fixes preserve bounded journal/summary behavior and avoid unchecked signed overflow.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Generators, revisions and change sequence/cursor state are explicit contract boundaries. Exhaustion is rejected before publication and restore validates continuity.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Primary records, indexes, generators, revisions, lifecycle and journal publication were reviewed together, including invalid/stale/duplicate and failure-atomicity paths.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "Snapshot state contains authoritative semantic records and continuity state required by the module. Transient provider/executor bindings are not reused as persistent semantic identities.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Reviewed 69 exact callable rows. Contract/test anchors are in `_goal4_handoff/B05/public_api_anchors.json` and `docs/EngineFramework/NavigationSemantics.md`.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "Reviewed 60 mutation obligations across success, no-op, invalid/precondition and failure semantics.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Read/query surfaces were checked against authoritative records and deterministic derived indexes/order; diagnostic state is not promoted to authority.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Owns semantic navigation profiles, layers and links/rules, their indexes, layer identity generator, revisions and the bounded navigation-semantics change journal.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "Restore validates into off-state and keeps the live service unchanged on validation/allocation failure; successful restore publishes a self-consistent state and advances/reset journal epoch according to contract.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Lifecycle states, allowed transitions, duplicate/terminal/retry behavior and wrong-lifecycle failures were reviewed against module tests.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "Externally serialized/owner-thread for Goal 4 local correctness. No new thread-safety promise is introduced; Goal 6 owns concurrency qualification.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Perception": {
+      "Authoritative state": {
+        "correction": "Owns perception definitions, perceivers, stimuli, pending/active observations, awareness state, spatial evaluation policy, generators, revisions and the bounded perception change journal.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Reviewed current Framework/Foundation public dependencies. B05 introduces no production dependency on another Bxx production directory.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Derived indexes and bounded journal/read models were reviewed with primary state. Fault paths may not publish a mismatched derived view.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "Perceiver sample providers and custom evaluators are read/evaluation ports. Their failure is translated to Result/error semantics before observation/index/revision publication.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Numeric bounds, budgets/retention and ID/revision/change-sequence exhaustion are explicit. B05 fixes preserve bounded journal/summary behavior and avoid unchecked signed overflow.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Generators, revisions and change sequence/cursor state are explicit contract boundaries. Exhaustion is rejected before publication and restore validates continuity.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Primary records, indexes, generators, revisions, lifecycle and journal publication were reviewed together, including invalid/stale/duplicate and failure-atomicity paths.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "Snapshot state contains authoritative semantic records and continuity state required by the module. Transient provider/executor bindings are not reused as persistent semantic identities.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Reviewed 72 exact callable rows. Contract/test anchors are in `_goal4_handoff/B05/public_api_anchors.json` and `docs/EngineFramework/Perception.md`.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "Reviewed 56 mutation obligations across success, no-op, invalid/precondition and failure semantics.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Read/query surfaces were checked against authoritative records and deterministic derived indexes/order; diagnostic state is not promoted to authority.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Owns perception definitions, perceivers, stimuli, pending/active observations, awareness state, spatial evaluation policy, generators, revisions and the bounded perception change journal.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "Restore validates into off-state and keeps the live service unchanged on validation/allocation failure; successful restore publishes a self-consistent state and advances/reset journal epoch according to contract.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Lifecycle states, allowed transitions, duplicate/terminal/retry behavior and wrong-lifecycle failures were reviewed against module tests.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "Externally serialized/owner-thread for Goal 4 local correctness. No new thread-safety promise is introduced; Goal 6 owns concurrency qualification.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Simulation": {
+      "Authoritative state": {
+        "correction": "Owns Framework simulation regions, layer definitions/executor bindings, resumable interval/task state, completed summaries, task/summary generators, revisions and the bounded simulation journal.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Reviewed current Framework/Foundation public dependencies. B05 introduces no production dependency on another Bxx production directory.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Derived indexes and bounded journal/read models were reviewed with primary state. Fault paths may not publish a mismatched derived view.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "`ISimulationLayerExecutor::Prepare/Commit` is the critical accepted-work boundary. Stable task IDs and idempotent commit remain required. Local terminal publication is now staged before external Commit, and after accepted work only no-throw local state/journal publication remains.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Numeric bounds, budgets/retention and ID/revision/change-sequence exhaustion are explicit. B05 fixes preserve bounded journal/summary behavior and avoid unchecked signed overflow.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Generators, revisions and change sequence/cursor state are explicit contract boundaries. Exhaustion is rejected before publication and restore validates continuity.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Primary records, indexes, generators, revisions, lifecycle and journal publication were reviewed together, including invalid/stale/duplicate and failure-atomicity paths.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "Snapshot state contains authoritative semantic records and continuity state required by the module. Transient provider/executor bindings are not reused as persistent semantic identities.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Reviewed 45 exact callable rows. Contract/test anchors are in `_goal4_handoff/B05/public_api_anchors.json` and `docs/EngineFramework/Simulation.md`.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "Reviewed 40 mutation obligations across success, no-op, invalid/precondition and failure semantics.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Read/query surfaces were checked against authoritative records and deterministic derived indexes/order; diagnostic state is not promoted to authority.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Owns Framework simulation regions, layer definitions/executor bindings, resumable interval/task state, completed summaries, task/summary generators, revisions and the bounded simulation journal.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "Restore validates into off-state and keeps the live service unchanged on validation/allocation failure; successful restore publishes a self-consistent state and advances/reset journal epoch according to contract.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Lifecycle states, allowed transitions, duplicate/terminal/retry behavior and wrong-lifecycle failures were reviewed against module tests.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "Externally serialized/owner-thread for Goal 4 local correctness. No new thread-safety promise is introduced; Goal 6 owns concurrency qualification.",
+        "status": "REVIEWED"
+      }
+    }
+  },
+  "schema_version": 1
+}

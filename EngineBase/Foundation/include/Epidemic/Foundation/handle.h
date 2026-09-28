@@ -17,11 +17,13 @@ template <typename TTag> class Handle
   public:
     static constexpr std::uint32_t kInvalidIndex = std::numeric_limits<std::uint32_t>::max();
 
-    // Builds an invalid handle.
+    // Builds the canonical invalid handle.
     constexpr Handle() noexcept = default;
 
     // Builds a handle from an explicit slot index and generation pair.
-    constexpr Handle(std::uint32_t index, std::uint32_t generation) noexcept : index_(index), generation_(generation)
+    // An invalid index always canonicalizes to generation 0.
+    constexpr Handle(std::uint32_t index, std::uint32_t generation) noexcept
+        : index_(index), generation_(index == kInvalidIndex ? 0u : generation)
     {
     }
 
@@ -57,7 +59,7 @@ template <typename TTag> class Handle
     std::uint32_t index_{kInvalidIndex};
     std::uint32_t generation_{0};
 };
-} 
+} // namespace epidemic::foundation
 
 namespace std
 {

@@ -27,6 +27,15 @@ class IAudioBackend
 public:
     virtual ~IAudioBackend() = default;
 
+    // Freeze contract for retryable Runtime projection:
+    //  * Initialize failure/exception means Audio services were not created.
+    //  * CreateVoice/CreateBackendListener success transfers one backend object to the caller; failure/exception
+    //    means no object was acquired.
+    //  * Setters and Play/Pause/Stop are safe to repeat with the same handle/value. A reported failure/exception
+    //    either leaves that command unapplied or permits an exact retry without duplicating a semantic effect.
+    //  * DestroyVoice/DestroyBackendListener failure/exception leaves ownership alive and retryable.
+    //  * Update(delta) failure/exception means delta was not accepted or temporally advanced. Retrying the same
+    //    delta after a failed Update therefore advances backend time exactly once.
     [[nodiscard]] virtual bool IsEnabled() const = 0;
     [[nodiscard]] virtual foundation::Result<void> Initialize(const AudioBackendOptions& options) = 0;
     [[nodiscard]] virtual foundation::Result<BackendVoiceHandle> CreateVoice(const AudioVoiceDesc& desc) = 0;

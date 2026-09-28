@@ -1,0 +1,478 @@
+{
+  "modules": {
+    "EngineRuntime/Animation": {
+      "Authoritative state": {
+        "correction": "Authoritative mutable records and lifecycle/revision state were traced through all public mutators.",
+        "evidence": [
+          "EngineRuntime/Animation/docs/Goal3_12_Animation_Audit.md:17::## Registry and resource audit"
+        ],
+        "rationale": "Reviewed `Authoritative state` for EngineRuntime/Animation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Only Foundation/RuntimeFoundation direct dependencies remain; no Runtime peer-major dependency was added.",
+        "evidence": [
+          "EngineRuntime/Animation/docs/Goal3_12_Animation_Audit.md:17::## Registry and resource audit"
+        ],
+        "rationale": "Reviewed `Dependency list` for EngineRuntime/Animation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Derived caches, staged state and lookup/index structures were checked for publication ordering and invalidation.",
+        "evidence": [
+          "EngineRuntime/Animation/docs/Goal3_12_Animation_Audit.md:17::## Registry and resource audit"
+        ],
+        "rationale": "Reviewed `Derived/cache/index state` for EngineRuntime/Animation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "External sink/backend/bridge boundaries and their Result/exception semantics were reviewed against targeted fault regressions.",
+        "evidence": [
+          "EngineRuntime/Animation/docs/Goal3_12_Animation_Audit.md:17::## Registry and resource audit"
+        ],
+        "rationale": "Reviewed `External ports/callbacks/providers/backends` for EngineRuntime/Animation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Capacity, ID/revision bounds, bounded events/queues and frame/work ordering limits are exercised by tests.",
+        "evidence": [
+          "EngineRuntime/Animation/docs/Goal3_12_Animation_Audit.md:17::## Registry and resource audit"
+        ],
+        "rationale": "Reviewed `Hard limits, budgets and complexity bounds` for EngineRuntime/Animation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Identity allocation, generation/revision exhaustion and stale handle paths are covered where the module owns them.",
+        "evidence": [
+          "EngineRuntime/Animation/docs/Goal3_12_Animation_Audit.md:17::## Registry and resource audit"
+        ],
+        "rationale": "Reviewed `ID spaces, generations, revisions and cursors` for EngineRuntime/Animation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Numeric domains, ownership, ordering and publication invariants were checked against implementation and tests.",
+        "evidence": [
+          "EngineRuntime/Animation/docs/Goal3_12_Animation_Audit.md:17::## Registry and resource audit"
+        ],
+        "rationale": "Reviewed `Local invariants` for EngineRuntime/Animation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "These modules own transient runtime state; no new Goal 3 persistence contract is introduced.",
+        "evidence": [
+          "EngineRuntime/Animation/docs/Goal3_12_Animation_Audit.md:17::## Registry and resource audit"
+        ],
+        "rationale": "Reviewed `Persistent and transient state` for EngineRuntime/Animation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Public type domains, enum/numeric validation and factory surface were reviewed; Block G adds no public API.",
+        "evidence": [
+          "EngineRuntime/Animation/docs/Goal3_12_Animation_Audit.md:17::## Registry and resource audit"
+        ],
+        "rationale": "Reviewed `Public headers and types` for EngineRuntime/Animation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "Every generated mutator family has precondition, success, failure and no-op semantics mapped to regressions.",
+        "evidence": [
+          "EngineRuntime/Animation/docs/Goal3_12_Animation_Audit.md:17::## Registry and resource audit"
+        ],
+        "rationale": "Reviewed `Public mutation API` for EngineRuntime/Animation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Queries return detached/validated observations and stale identity behavior is covered where applicable.",
+        "evidence": [
+          "EngineRuntime/Animation/docs/Goal3_12_Animation_Audit.md:17::## Registry and resource audit"
+        ],
+        "rationale": "Reviewed `Read/query API for invariants` for EngineRuntime/Animation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Module responsibility and forbidden cross-major ownership were checked against public headers, implementation and module documentation.",
+        "evidence": [
+          "EngineRuntime/Animation/docs/Goal3_12_Animation_Audit.md:17::## Registry and resource audit"
+        ],
+        "rationale": "Reviewed `Responsibility` for EngineRuntime/Animation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "No persistence restore surface exists locally; snapshot/query objects are observational and detached.",
+        "evidence": [
+          "EngineRuntime/Animation/docs/Goal3_12_Animation_Audit.md:17::## Registry and resource audit"
+        ],
+        "rationale": "Reviewed `Snapshot/restore contract` for EngineRuntime/Animation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Allowed, forbidden and terminal/recovery transitions are represented by explicit tests.",
+        "evidence": [
+          "EngineRuntime/Animation/docs/Goal3_12_Animation_Audit.md:17::## Registry and resource audit"
+        ],
+        "rationale": "Reviewed `State machines` for EngineRuntime/Animation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "No private worker ownership is introduced; mutable runtime use remains caller-serialized/synchronous.",
+        "evidence": [
+          "EngineRuntime/Animation/docs/Goal3_12_Animation_Audit.md:17::## Registry and resource audit"
+        ],
+        "rationale": "Reviewed `Threading contract` for EngineRuntime/Animation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineRuntime/Environment": {
+      "Authoritative state": {
+        "correction": "Registered region records, surface records, global/per-region revisions, registration freeze state and update policy pointer are local state.",
+        "evidence": [
+          "EngineRuntime/Environment/docs/Block_E_Evidence_Fragment_2026-09-21.md:44::Dossier"
+        ],
+        "rationale": "Reviewed `Authoritative state` for EngineRuntime/Environment against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Only RuntimeFoundation/Foundation are direct dependencies; no Environment-to-Time/World/Scene/etc. peer-major link exists.",
+        "evidence": [
+          "EngineRuntime/Environment/docs/Block_E_Evidence_Fragment_2026-09-21.md:44::Dossier"
+        ],
+        "rationale": "Reviewed `Dependency list` for EngineRuntime/Environment against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Surface condition is derived/canonicalized; snapshot surface ordering and projection are detached derived observations.",
+        "evidence": [
+          "EngineRuntime/Environment/docs/Block_E_Evidence_Fragment_2026-09-21.md:44::Dossier"
+        ],
+        "rationale": "Reviewed `Derived/cache/index state` for EngineRuntime/Environment against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "IEnvironmentUpdatePolicy is the sole external callback boundary; Result failures and exceptions are contained before ApplyUpdate publication.",
+        "evidence": [
+          "EngineRuntime/Environment/docs/Block_E_Evidence_Fragment_2026-09-21.md:44::Dossier"
+        ],
+        "rationale": "Reviewed `External ports/callbacks/providers/backends` for EngineRuntime/Environment against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "No explicit runtime budget/capacity. Batch work is bounded by caller update size; revision exhaustion is checked before commit.",
+        "evidence": [
+          "EngineRuntime/Environment/docs/Block_E_Evidence_Fragment_2026-09-21.md:44::Dossier"
+        ],
+        "rationale": "Reviewed `Hard limits, budgets and complexity bounds` for EngineRuntime/Environment against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "RegionId/SurfaceId registration ownership is stable; global/per-region revisions are uint64 and revision exhaustion is rejected.",
+        "evidence": [
+          "EngineRuntime/Environment/docs/Block_E_Evidence_Fragment_2026-09-21.md:44::Dossier"
+        ],
+        "rationale": "Reviewed `ID spaces, generations, revisions and cursors` for EngineRuntime/Environment against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Finite numeric domains, canonical wind, immutable surface-to-region ownership, registration freeze and atomic batch publication are enforced.",
+        "evidence": [
+          "EngineRuntime/Environment/docs/Block_E_Evidence_Fragment_2026-09-21.md:44::Dossier"
+        ],
+        "rationale": "Reviewed `Local invariants` for EngineRuntime/Environment against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "EnvironmentSnapshot is detached observation only; no local persistence restore contract belongs to Goal 3.",
+        "evidence": [
+          "EngineRuntime/Environment/docs/Block_E_Evidence_Fragment_2026-09-21.md:44::Dossier"
+        ],
+        "rationale": "Reviewed `Persistent and transient state` for EngineRuntime/Environment against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "32 public callables; public include tree is unchanged by Block E and standalone headers are checked.",
+        "evidence": [
+          "EngineRuntime/Environment/docs/Block_E_Evidence_Fragment_2026-09-21.md:44::Dossier"
+        ],
+        "rationale": "Reviewed `Public headers and types` for EngineRuntime/Environment against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "Registration, scalar setters, surface writes, batch update, policy update and freeze lifecycle are reviewed.",
+        "evidence": [
+          "EngineRuntime/Environment/docs/Block_E_Evidence_Fragment_2026-09-21.md:44::Dossier"
+        ],
+        "rationale": "Reviewed `Public mutation API` for EngineRuntime/Environment against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Weather/season/climate/surface queries, revisions, snapshots and projections expose invariant state.",
+        "evidence": [
+          "EngineRuntime/Environment/docs/Block_E_Evidence_Fragment_2026-09-21.md:44::Dossier"
+        ],
+        "rationale": "Reviewed `Read/query API for invariants` for EngineRuntime/Environment against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Environment owns neutral weather, season, climate and surface state by registered region, plus detached snapshots/projections.",
+        "evidence": [
+          "EngineRuntime/Environment/docs/Block_E_Evidence_Fragment_2026-09-21.md:44::Dossier"
+        ],
+        "rationale": "Reviewed `Responsibility` for EngineRuntime/Environment against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "Snapshots/projections are observations; no Environment restore/checkpoint API exists in Goal 3.",
+        "evidence": [
+          "EngineRuntime/Environment/docs/Block_E_Evidence_Fragment_2026-09-21.md:44::Dossier"
+        ],
+        "rationale": "Reviewed `Snapshot/restore contract` for EngineRuntime/Environment against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Registration has a one-way freeze. Existing registered region/surface values remain mutable after freeze; new identities are forbidden.",
+        "evidence": [
+          "EngineRuntime/Environment/docs/Block_E_Evidence_Fragment_2026-09-21.md:44::Dossier"
+        ],
+        "rationale": "Reviewed `State machines` for EngineRuntime/Environment against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "No synchronization primitive or concurrent-call guarantee is exposed; policy callback execution is synchronous.",
+        "evidence": [
+          "EngineRuntime/Environment/docs/Block_E_Evidence_Fragment_2026-09-21.md:44::Dossier"
+        ],
+        "rationale": "Reviewed `Threading contract` for EngineRuntime/Environment against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineRuntime/RuntimeFoundation": {
+      "Authoritative state": {
+        "evidence": [
+          "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions"
+        ],
+        "rationale": "Reviewed `Authoritative state` for EngineRuntime/RuntimeFoundation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "evidence": [
+          "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions"
+        ],
+        "rationale": "Reviewed `Dependency list` for EngineRuntime/RuntimeFoundation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "evidence": [
+          "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions"
+        ],
+        "rationale": "Reviewed `Derived/cache/index state` for EngineRuntime/RuntimeFoundation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "evidence": [
+          "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions"
+        ],
+        "rationale": "Reviewed `External ports/callbacks/providers/backends` for EngineRuntime/RuntimeFoundation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "evidence": [
+          "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions"
+        ],
+        "rationale": "Reviewed `Hard limits, budgets and complexity bounds` for EngineRuntime/RuntimeFoundation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "evidence": [
+          "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions"
+        ],
+        "rationale": "Reviewed `ID spaces, generations, revisions and cursors` for EngineRuntime/RuntimeFoundation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "evidence": [
+          "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions"
+        ],
+        "rationale": "Reviewed `Local invariants` for EngineRuntime/RuntimeFoundation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "evidence": [
+          "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions"
+        ],
+        "rationale": "Reviewed `Persistent and transient state` for EngineRuntime/RuntimeFoundation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "evidence": [
+          "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions"
+        ],
+        "rationale": "Reviewed `Public headers and types` for EngineRuntime/RuntimeFoundation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "evidence": [
+          "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions"
+        ],
+        "rationale": "Reviewed `Public mutation API` for EngineRuntime/RuntimeFoundation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "evidence": [
+          "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions"
+        ],
+        "rationale": "Reviewed `Read/query API for invariants` for EngineRuntime/RuntimeFoundation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "evidence": [
+          "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions"
+        ],
+        "rationale": "Reviewed `Responsibility` for EngineRuntime/RuntimeFoundation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "evidence": [
+          "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions"
+        ],
+        "rationale": "Reviewed `Snapshot/restore contract` for EngineRuntime/RuntimeFoundation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "evidence": [
+          "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions"
+        ],
+        "rationale": "Reviewed `State machines` for EngineRuntime/RuntimeFoundation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "evidence": [
+          "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions"
+        ],
+        "rationale": "Reviewed `Threading contract` for EngineRuntime/RuntimeFoundation against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineRuntime/Time": {
+      "Authoritative state": {
+        "correction": "now, normalized time scale, pause state, fractional remainder and revision.",
+        "evidence": [
+          "EngineRuntime/Time/docs/Goal3_Block_A_Evidence_2026-09-21.md:31::## Dossier field review decisions"
+        ],
+        "rationale": "Reviewed `Authoritative state` for EngineRuntime/Time against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "RuntimeFoundation and Foundation only; no Runtime peer dependency.",
+        "evidence": [
+          "EngineRuntime/Time/docs/Goal3_Block_A_Evidence_2026-09-21.md:31::## Dossier field review decisions"
+        ],
+        "rationale": "Reviewed `Dependency list` for EngineRuntime/Time against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "TimeSnapshot and calendar/day-phase observations are rebuilt from candidate authoritative state; no secondary lookup index.",
+        "evidence": [
+          "EngineRuntime/Time/docs/Goal3_Block_A_Evidence_2026-09-21.md:31::## Dossier field review decisions"
+        ],
+        "rationale": "Reviewed `Derived/cache/index state` for EngineRuntime/Time against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "None.",
+        "evidence": [
+          "EngineRuntime/Time/docs/Goal3_Block_A_Evidence_2026-09-21.md:31::## Dossier field review decisions"
+        ],
+        "rationale": "Reviewed `External ports/callbacks/providers/backends` for EngineRuntime/Time against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "All calendar/scaling multiplications and revision/time bounds checked before commit; event staging reserves before publication.",
+        "evidence": [
+          "EngineRuntime/Time/docs/Goal3_Block_A_Evidence_2026-09-21.md:31::## Dossier field review decisions"
+        ],
+        "rationale": "Reviewed `Hard limits, budgets and complexity bounds` for EngineRuntime/Time against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "No handle ID space; revision is checked and exhaustion rejects before mutation.",
+        "evidence": [
+          "EngineRuntime/Time/docs/Goal3_Block_A_Evidence_2026-09-21.md:31::## Dossier field review decisions"
+        ],
+        "rationale": "Reviewed `ID spaces, generations, revisions and cursors` for EngineRuntime/Time against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Non-negative time, normalized positive scale, canonical phase boundaries, rational remainder bounds and deterministic event order.",
+        "evidence": [
+          "EngineRuntime/Time/docs/Goal3_Block_A_Evidence_2026-09-21.md:31::## Dossier field review decisions"
+        ],
+        "rationale": "Reviewed `Local invariants` for EngineRuntime/Time against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "Checkpoint includes remainder/scale/pause/revision/config identity; last_delta/events/operation-only state are transient.",
+        "evidence": [
+          "EngineRuntime/Time/docs/Goal3_Block_A_Evidence_2026-09-21.md:31::## Dossier field review decisions"
+        ],
+        "rationale": "Reviewed `Persistent and transient state` for EngineRuntime/Time against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "TimeCheckpoint is persistence-complete; TimeSnapshot remains frame-facing observation.",
+        "evidence": [
+          "EngineRuntime/Time/docs/Goal3_Block_A_Evidence_2026-09-21.md:31::## Dossier field review decisions"
+        ],
+        "rationale": "Reviewed `Public headers and types` for EngineRuntime/Time against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "Advance, Pause, Resume, SetTimeScale, Skip and RestoreCheckpoint; all have candidate-before-commit or explicit no-op behavior.",
+        "evidence": [
+          "EngineRuntime/Time/docs/Goal3_Block_A_Evidence_2026-09-21.md:31::## Dossier field review decisions"
+        ],
+        "rationale": "Reviewed `Public mutation API` for EngineRuntime/Time against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Now, LastDelta, GetSnapshot and CaptureCheckpoint expose deterministic state observations.",
+        "evidence": [
+          "EngineRuntime/Time/docs/Goal3_Block_A_Evidence_2026-09-21.md:31::## Dossier field review decisions"
+        ],
+        "rationale": "Reviewed `Read/query API for invariants` for EngineRuntime/Time against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Sole Runtime owner of authoritative game clock progression, scale, pause state, deterministic fractional remainder and time events.",
+        "evidence": [
+          "EngineRuntime/Time/docs/Goal3_Block_A_Evidence_2026-09-21.md:31::## Dossier field review decisions"
+        ],
+        "rationale": "Reviewed `Responsibility` for EngineRuntime/Time against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "Validate complete checkpoint and compatibility, build candidate off-state, one no-fail commit, clear transient state.",
+        "evidence": [
+          "EngineRuntime/Time/docs/Goal3_Block_A_Evidence_2026-09-21.md:31::## Dossier field review decisions"
+        ],
+        "rationale": "Reviewed `Snapshot/restore contract` for EngineRuntime/Time against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Running/paused semantics are explicit; pause/resume duplicate operations are no-ops.",
+        "evidence": [
+          "EngineRuntime/Time/docs/Goal3_Block_A_Evidence_2026-09-21.md:31::## Dossier field review decisions"
+        ],
+        "rationale": "Reviewed `State machines` for EngineRuntime/Time against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "No internal worker/thread ownership; synchronous caller-serialized mutable runtime contract.",
+        "evidence": [
+          "EngineRuntime/Time/docs/Goal3_Block_A_Evidence_2026-09-21.md:31::## Dossier field review decisions"
+        ],
+        "rationale": "Reviewed `Threading contract` for EngineRuntime/Time against the module-local audit/evidence document and current source/tests; this handoff metadata is for the serial reviewer and is not copied verbatim into the canonical status-only dossier registry.",
+        "status": "REVIEWED"
+      }
+    }
+  },
+  "schema_version": 1
+}

@@ -9,7 +9,7 @@ target_include_directories(EpidemicRuntimeAnimation PUBLIC
 
 target_link_libraries(EpidemicRuntimeAnimation
     PUBLIC EpidemicRuntimeFoundation
-    PRIVATE EpidemicFoundation
+    PUBLIC EpidemicFoundation
 )
 
 set(_epidemic_runtime_animation_forbidden_targets

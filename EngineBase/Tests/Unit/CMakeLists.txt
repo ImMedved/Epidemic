@@ -7,7 +7,7 @@ target_link_libraries(EpidemicFoundationUnitTests
 )
 
 epidemic_configure_target(EpidemicFoundationUnitTests)
-add_test(NAME EpidemicFoundationUnitTests COMMAND EpidemicFoundationUnitTests)
+epidemic_add_test(EpidemicFoundationUnitTests)
 
 add_executable(EpidemicMemoryUnitTests
     memory_unit_tests.cpp
@@ -18,7 +18,7 @@ target_link_libraries(EpidemicMemoryUnitTests
 )
 
 epidemic_configure_target(EpidemicMemoryUnitTests)
-add_test(NAME EpidemicMemoryUnitTests COMMAND EpidemicMemoryUnitTests)
+epidemic_add_test(EpidemicMemoryUnitTests)
 
 add_executable(EpidemicDiagnosticsUnitTests
     diagnostics_unit_tests.cpp
@@ -29,7 +29,7 @@ target_link_libraries(EpidemicDiagnosticsUnitTests
 )
 
 epidemic_configure_target(EpidemicDiagnosticsUnitTests)
-add_test(NAME EpidemicDiagnosticsUnitTests COMMAND EpidemicDiagnosticsUnitTests)
+epidemic_add_test(EpidemicDiagnosticsUnitTests)
 
 add_executable(EpidemicCoreUnitTests
     core_unit_tests.cpp
@@ -39,8 +39,14 @@ target_link_libraries(EpidemicCoreUnitTests
     PRIVATE EpidemicFoundation EpidemicDiagnostics EpidemicCore EpidemicMemory
 )
 
+target_include_directories(EpidemicCoreUnitTests PRIVATE
+    "${PROJECT_SOURCE_DIR}/EngineBase/Core/src"
+)
+
+target_compile_definitions(EpidemicCoreUnitTests PRIVATE EPIDEMIC_CORE_ENABLE_TEST_HOOKS=1)
+
 epidemic_configure_target(EpidemicCoreUnitTests)
-add_test(NAME EpidemicCoreUnitTests COMMAND EpidemicCoreUnitTests)
+epidemic_add_test(EpidemicCoreUnitTests)
 
 add_executable(EpidemicRhiUnitTests
     rhi_unit_tests.cpp
@@ -51,4 +57,4 @@ target_link_libraries(EpidemicRhiUnitTests
 )
 
 epidemic_configure_target(EpidemicRhiUnitTests)
-add_test(NAME EpidemicRhiUnitTests COMMAND EpidemicRhiUnitTests)
+epidemic_add_test(EpidemicRhiUnitTests)

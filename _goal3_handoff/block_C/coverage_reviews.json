@@ -1,0 +1,2531 @@
+{
+  "api": {
+    "00b6c398bea569d2": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_types.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::WorldMemoryEventId",
+      "signature": "[[nodiscard]] constexpr bool operator==(const WorldMemoryEventId&)const noexcept=default;"
+    },
+    "00db649fe3c3aa61": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_types.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::PhysicsBodyId",
+      "signature": "[[nodiscard]] constexpr bool operator==(const PhysicsBodyId&)const noexcept=default;"
+    },
+    "01ad4b379ec18503": {
+      "classification": "FACTORY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics",
+      "signature": "[[nodiscard]] foundation::Result<PhysicsServices> CreatePhysicsServices(PhysicsDependencies dependencies);"
+    },
+    "0226dbd0dde066a8": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::ISimulationScheduler",
+      "signature": "[[nodiscard]] virtual foundation::Result<SimulationJobHandle> SubmitJob(std::shared_ptr<ISimulationJob> job,SimulationJobDesc metadata)=0;"
+    },
+    "02272163ae2f0588": {
+      "classification": "FACTORY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_runtime.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming",
+      "signature": "[[nodiscard]] foundation::Result<StreamingServices> CreateStreamingServices(const StreamingDependencies&dependencies={});"
+    },
+    "05553a45ceea690a": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::IAbstractFactStore",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> RecordFact(const AbstractFact&fact)=0;"
+    },
+    "0783ef2c08ef98fe": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_types.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::StreamingRequestId",
+      "signature": "[[nodiscard]] friend constexpr bool operator==(StreamingRequestId,StreamingRequestId)noexcept=default;"
+    },
+    "07aa50346e4f43ae": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::IPhysicsBackend",
+      "signature": "[[nodiscard]] virtual foundation::Result<BackendRaycastHit> RaycastBackend(const RaycastQuery&query)const=0;"
+    },
+    "07cd9695d13a17cf": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_types.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::PathQueryHandle",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "0d520e9341accb4a": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::IPhysicsTransformSource",
+      "signature": "virtual ~IPhysicsTransformSource()=default;"
+    },
+    "102521c7366dcf60": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::INavigationBackend",
+      "signature": "virtual ~INavigationBackend()=default;"
+    },
+    "115089a8c8233feb": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::physics::IPhysicsScene",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> DestroyBody(PhysicsBodyHandle handle)=0;"
+    },
+    "129d5c0a2e20baf2": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_types.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::CollisionShapeId",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "12cec580a43ec370": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_sources.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingCommitTarget",
+      "signature": "virtual ~IStreamingCommitTarget()=default;"
+    },
+    "12ef4e73729f1baa": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_runtime.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::streaming::IStreamingController",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> CancelRequest(StreamingRequestHandle request)=0;"
+    },
+    "143d9d9ea4ddd565": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_types.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::BackendBodyHandle",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "145c45cf178164e9": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_types.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::StreamingDemandHandle",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "192b447330ac4e92": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_types.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::PathQueryId",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "1983d34ea1235fa2": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_event_buffer.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::physics::IPhysicsEventBuffer",
+      "signature": "virtual void Clear()=0;"
+    },
+    "19f537a5a74c3cc4": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::INavigationRuntime",
+      "signature": "virtual ~INavigationRuntime()=default;"
+    },
+    "1b793048655cefb9": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_sources.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingPriorityProvider",
+      "signature": "[[nodiscard]] virtual StreamingPriorityClass GetPriority(const StreamingTarget&target)const=0;"
+    },
+    "1d3ac65adcab297e": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::IPhysicsTransformSink",
+      "signature": "virtual ~IPhysicsTransformSink()=default;"
+    },
+    "2165b097b0e24e2a": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::IAttentionSystem",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> SetRegionAttention(RegionId region,AttentionScore score)=0;"
+    },
+    "22b1f18d58cfa224": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::IWorldMemory",
+      "signature": "[[nodiscard]] virtual std::size_t ExpireOldEvents(SimulationTime now,std::uint32_t max_events)=0;"
+    },
+    "25493b6c71c30a16": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::INavigationRuntime",
+      "signature": "[[nodiscard]] virtual foundation::Result<PathResult> GetPathResult(PathQueryHandle handle)const=0;"
+    },
+    "2590b08475f5ebfd": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_types.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::BackendShapeHandle",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "25c189b1fe5be460": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_types.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::PhysicsBodyHandle",
+      "signature": "[[nodiscard]] constexpr bool operator==(const PhysicsBodyHandle&)const noexcept=default;"
+    },
+    "26632313cf26ded4": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::physics::IPhysicsBackend",
+      "signature": "[[nodiscard]] virtual foundation::Result<std::vector<BackendContactEvent>> ConsumeContactEvents()=0;"
+    },
+    "27f7c18c8a33c61e": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_types.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "std::hash",
+      "signature": "[[nodiscard]] size_t operator()(epidemic::runtime::simulation::SimulationJobId value)const noexcept"
+    },
+    "299a7ab298067aa2": {
+      "classification": "LIFECYCLE",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/residency_controller.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::streaming::IResidencyController",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> ActivateChunk(ChunkId chunk)=0;"
+    },
+    "2ad0c339921bbdcc": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::ISimulationScheduler",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> CancelJob(SimulationJobHandle handle)=0;"
+    },
+    "2d8b05f9a5195f62": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_runtime.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingQuery",
+      "signature": "[[nodiscard]] virtual StreamingState GetChunkState(ChunkId chunk)const=0;"
+    },
+    "31724d9b82f2840c": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::IAbstractFactStore",
+      "signature": "[[nodiscard]] virtual std::vector<AbstractFact> QueryFacts(SimulationZoneId zone)const=0;"
+    },
+    "32403f57102d7f5f": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_types.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics",
+      "signature": "[[nodiscard]] constexpr bool HasFlag(PhysicsDirtyFlags value,PhysicsDirtyFlags flag)noexcept"
+    },
+    "3376744e2cdcecb5": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::ISimulationCommitTarget",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Commit(const SimulationProposalBatch&batch)=0;"
+    },
+    "33e36f70beca629d": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::physics::IPhysicsBackend",
+      "signature": "[[nodiscard]] virtual foundation::Result<BackendBodyHandle> CreateBody(const PhysicsBodyDesc&desc,BackendShapeHandle shape)=0;"
+    },
+    "35fd9421397ff6f7": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::IPhysicsTransformSource",
+      "signature": "[[nodiscard]] virtual foundation::Result<Transform> ReadTransform(PhysicsTransformId id)const=0;"
+    },
+    "36453f603e5d6ac3": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::physics::IPhysicsScene",
+      "signature": "[[nodiscard]] virtual foundation::Result<PhysicsBodyHandle> CreateBody(const PhysicsBodyDesc&desc)=0;"
+    },
+    "374c221ec4b479fa": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_sources.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::streaming::IStreamingDataSource",
+      "signature": "[[nodiscard]] virtual foundation::Result<StreamingStepResult> ExecuteStep(const StreamingRequest&request,StreamingPlanStepRecord step,const RuntimeBudget&available_budget)=0;"
+    },
+    "391791fb53ce052d": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::INavigationObstacleSource",
+      "signature": "[[nodiscard]] virtual std::span<const DynamicObstacle> ObstaclesForRegion(RegionId region)const=0;"
+    },
+    "3a460cb899fe5fdc": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_runtime.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingRuntime",
+      "signature": "[[nodiscard]] virtual std::optional<StreamingProgress> GetProgress(StreamingRequestHandle request)const=0;"
+    },
+    "3b188fc2bb41a33b": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_runtime.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingRuntime",
+      "signature": "[[nodiscard]] virtual StreamingState GetChunkState(ChunkId chunk)const=0;"
+    },
+    "3c1ed78230a9a02b": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::IRelevancePolicy",
+      "signature": "[[nodiscard]] virtual SimulationZoneState ClassifyZone(RegionId region,AttentionScore attention)const=0;"
+    },
+    "3de99752159a4a45": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_runtime.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::streaming::IStreamingRuntime",
+      "signature": "virtual void SetBudget(const StreamingBudget&budget)=0;"
+    },
+    "3edfd7c3b767e24f": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::IAbstractFactStore",
+      "signature": "virtual ~IAbstractFactStore()=default;"
+    },
+    "3fd1f34e726f0da2": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::IAttentionSystem",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> SetAttention(RuntimeObjectId object,AttentionScore score)=0;"
+    },
+    "3fed77236decd79e": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::physics::IPhysicsTransformSink",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> WriteTransform(PhysicsTransformId id,const Transform&transform)=0;"
+    },
+    "3ffba33a74ba3bed": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_sources.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingPriorityProvider",
+      "signature": "virtual ~IStreamingPriorityProvider()=default;"
+    },
+    "401b8b22144cfa00": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_types.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics",
+      "signature": "[[nodiscard]] constexpr PhysicsDirtyFlags operator|(PhysicsDirtyFlags left,PhysicsDirtyFlags right)noexcept"
+    },
+    "42c829724fc70dc0": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::IAttentionSystem",
+      "signature": "[[nodiscard]] virtual SimulationZoneState GetRegionZoneState(RegionId region)const=0;"
+    },
+    "456b863758383b50": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::physics::IPhysicsBackend",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> DestroyShape(BackendShapeHandle handle)=0;"
+    },
+    "457ad94cda41a43c": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_types.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::StreamingRequestHandle",
+      "signature": "[[nodiscard]] friend constexpr bool operator==(StreamingRequestHandle,StreamingRequestHandle)noexcept=default;"
+    },
+    "4736e0433d0fcbe0": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::IPhysicsBackend",
+      "signature": "virtual ~IPhysicsBackend()=default;"
+    },
+    "476f5ed6fba1419c": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_types.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::PhysicsBodyHandle",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "4b4498e58f4860c8": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::ISimulationProposalQueue",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> CommitNext()=0;"
+    },
+    "4bc54c7c28fd0710": {
+      "classification": "CONSTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_types.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::StreamingPlanStepRecord",
+      "signature": "constexpr StreamingPlanStepRecord()=default;"
+    },
+    "4cb643a8932bbfd2": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_types.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::SimulationJobId",
+      "signature": "[[nodiscard]] constexpr bool operator==(const SimulationJobId&)const noexcept=default;"
+    },
+    "4cc1248eb325e076": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::navigation::INavigationRuntime",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> CancelPath(PathQueryHandle handle)=0;"
+    },
+    "4e671e7179356df3": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::physics::IPhysicsStepper",
+      "signature": "[[nodiscard]] virtual foundation::Result<PhysicsStepResult> StepFixed(RuntimeFrameDuration fixed_delta)=0;"
+    },
+    "4ee642ecf8a168a9": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_priority_resolver.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingPriorityResolver",
+      "signature": "virtual ~IStreamingPriorityResolver()=default;"
+    },
+    "5083f6bb087159d4": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::ISimulationClock",
+      "signature": "virtual ~ISimulationClock()=default;"
+    },
+    "51b8e9d756744806": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_types.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::StreamingRequestId",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "52a7296ce48add36": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_query.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::IPhysicsQuery",
+      "signature": "[[nodiscard]] virtual foundation::Result<RaycastHit> Raycast(const RaycastQuery&query)const=0;"
+    },
+    "52e379d0c90f5f31": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_types.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "std::hash",
+      "signature": "[[nodiscard]] size_t operator()(epidemic::runtime::physics::CollisionShapeId value)const noexcept"
+    },
+    "5622a0fcd7464e2a": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_sources.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::streaming::IStreamingResourceSource",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> ReleaseChunkResources(ChunkId chunk)=0;"
+    },
+    "59f5e151496f5a7f": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_types.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::PhysicsBodyId",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "5c6bafdb09b70f4c": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_types.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::SimulationJobHandle",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "5cf6032a8662685e": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_types.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "std::hash",
+      "signature": "[[nodiscard]] size_t operator()(epidemic::runtime::navigation::NavTileId value)const noexcept"
+    },
+    "5f1de054afbd3bda": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_sources.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingPersistenceSource",
+      "signature": "virtual ~IStreamingPersistenceSource()=default;"
+    },
+    "607d8b02fa8a4471": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_types.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::BackendBodyHandle",
+      "signature": "[[nodiscard]] constexpr bool operator==(const BackendBodyHandle&)const noexcept=default;"
+    },
+    "60d6c9c3f96c00fb": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_types.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "std::hash",
+      "signature": "[[nodiscard]] size_t operator()(epidemic::runtime::physics::BackendBodyHandle value)const noexcept"
+    },
+    "624fcbaa101195f4": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::ICollisionShapeRegistry",
+      "signature": "virtual ~ICollisionShapeRegistry()=default;"
+    },
+    "62beb9ee1cbee351": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_types.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::NavTileId",
+      "signature": "[[nodiscard]] constexpr bool operator==(const NavTileId&)const noexcept=default;"
+    },
+    "630b1c0d0335c367": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_types.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::SimulationJobHandle",
+      "signature": "[[nodiscard]] constexpr bool operator==(const SimulationJobHandle&)const noexcept=default;"
+    },
+    "64407fa2be04d449": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_types.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::ScheduledSimulationTaskId",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "65795bd424e8b920": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::IScheduledSimulationTasks",
+      "signature": "virtual ~IScheduledSimulationTasks()=default;"
+    },
+    "6704cf4c448e8748": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_runtime.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingRuntime",
+      "signature": "virtual ~IStreamingRuntime()=default;"
+    },
+    "677a7e3ea9199da9": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_types.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::StreamingPlanStepRecord",
+      "signature": "constexpr operator StreamingPlanStep()const noexcept"
+    },
+    "68fcf12faa2b6d87": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_types.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "std::hash",
+      "signature": "[[nodiscard]] size_t operator()(epidemic::runtime::simulation::ScheduledSimulationTaskId value)const noexcept"
+    },
+    "6912a87f5faa3ca5": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::ISimulationProposalQueue",
+      "signature": "[[nodiscard]] virtual std::span<const SimulationProposalBatch> PendingBatches()const=0;"
+    },
+    "6b4a1377368d6dde": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::IWorldMemory",
+      "signature": "[[nodiscard]] virtual foundation::Result<WorldMemoryEventId> RecordEvent(const WorldMemoryEvent&event)=0;"
+    },
+    "6ba5fc052f6441f2": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_types.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "std::hash",
+      "signature": "[[nodiscard]] size_t operator()(epidemic::runtime::simulation::WorldMemoryEventId value)const noexcept"
+    },
+    "6bdcff5da9d60855": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::navigation::INavTileRegistry",
+      "signature": "[[nodiscard]] virtual std::size_t RebuildDirtyTiles(RuntimeBudget budget)=0;"
+    },
+    "6f97c215bb3cfce5": {
+      "classification": "LIFECYCLE",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::physics::IPhysicsRuntimeLifecycle",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Shutdown()=0;"
+    },
+    "7142f14af7c1b278": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::navigation::INavigationRuntime",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> ReleasePathResult(PathQueryHandle handle)=0;"
+    },
+    "717f8a5d86121718": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::IPhysicsRuntimeLifecycle",
+      "signature": "virtual ~IPhysicsRuntimeLifecycle()=default;"
+    },
+    "725540046675416f": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_types.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::StreamingDemandId",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "73f85ea963b81618": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_types.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::StreamingDemandHandle",
+      "signature": "[[nodiscard]] friend constexpr bool operator==(StreamingDemandHandle,StreamingDemandHandle)noexcept=default;"
+    },
+    "7983cf169c86e89f": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::IAttentionSystem",
+      "signature": "[[nodiscard]] virtual AttentionScore GetAttention(RuntimeObjectId object)const=0;"
+    },
+    "7a57974d3b03ae69": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_sources.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingResourceSource",
+      "signature": "virtual ~IStreamingResourceSource()=default;"
+    },
+    "7bc69c9657bda761": {
+      "classification": "FACTORY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation",
+      "signature": "[[nodiscard]] foundation::Result<NavigationServices> CreateNavigationServices(NavigationOptions options={},NavigationDependencies dependencies={});"
+    },
+    "7d54beeaaf040301": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_types.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "std::hash",
+      "signature": "[[nodiscard]] size_t operator()(epidemic::runtime::physics::PhysicsBodyHandle value)const noexcept"
+    },
+    "7e4ada52d1fef486": {
+      "classification": "FACTORY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics",
+      "signature": "[[nodiscard]] foundation::Result<PhysicsServices> CreatePhysicsServices(std::shared_ptr<IPhysicsBackend> backend);"
+    },
+    "7eb1a8941604c4ce": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::ISimulationJob",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Cancel()=0;"
+    },
+    "7f836c1e900f5f00": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_types.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "std",
+      "signature": "std::size_t operator()(epidemic::runtime::streaming::StreamingRequestId id)const noexcept"
+    },
+    "81141925f1abba63": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_runtime.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingRuntime",
+      "signature": "[[nodiscard]] virtual StreamingStatistics GetStatistics()const=0;"
+    },
+    "821151c9e563fa43": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/residency_controller.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::streaming::IResidencyController",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> UnloadChunk(ChunkId chunk)=0;"
+    },
+    "82ec5be060db43d9": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::IWorldMemory",
+      "signature": "[[nodiscard]] virtual std::vector<WorldMemoryEvent> QueryEvents(const WorldMemoryQuery&query)const=0;"
+    },
+    "89a88078a54c2529": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::IAbstractFactStore",
+      "signature": "[[nodiscard]] virtual std::uint64_t Revision()const=0;"
+    },
+    "8a415d0c9f8943bd": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::IPhysicsBackend",
+      "signature": "[[nodiscard]] virtual foundation::Result<BackendBodySnapshot> GetBodySnapshot(BackendBodyHandle handle)const=0;"
+    },
+    "8b240aa3d7162c95": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::INavigationObstacleSource",
+      "signature": "virtual ~INavigationObstacleSource()=default;"
+    },
+    "8b6dbfae7051c431": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::physics::IPhysicsBackend",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> ApplyImpulse(BackendBodyHandle handle,const Vec3&impulse)=0;"
+    },
+    "8c4ad7c94f56635b": {
+      "classification": "FACTORY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_sources.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingDataSource",
+      "signature": "[[nodiscard]] virtual foundation::Result<ProgressiveLoadPlan> BuildLoadPlan(const StreamingRequest&request)=0;"
+    },
+    "8cc043029ecb2295": {
+      "classification": "FACTORY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation",
+      "signature": "[[nodiscard]] NavigationServices CreateMockNavigationServices(NavigationOptions options={});"
+    },
+    "8e7c10ae349eae3b": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::ISimulationProposalQueue",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> DiscardAll(ProposalDiscardReason reason)=0;"
+    },
+    "8f12dd1083e05496": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_types.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::SimulationJobId",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "902446e6a5e5fd96": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::physics::ICollisionShapeRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> UnregisterShape(CollisionShapeId id)=0;"
+    },
+    "92833a989f9a3fde": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::IAttentionSystem",
+      "signature": "virtual ~IAttentionSystem()=default;"
+    },
+    "92a4a2daaf35d478": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::INavCostProvider",
+      "signature": "virtual ~INavCostProvider()=default;"
+    },
+    "938318cc869ba6a5": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_sources.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingDataSource",
+      "signature": "virtual ~IStreamingDataSource()=default;"
+    },
+    "944929ff033741a8": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::navigation::INavigationRuntime",
+      "signature": "[[nodiscard]] virtual foundation::Result<PathQueryHandle> RequestPathHandle(const PathRequest&request)=0;"
+    },
+    "94b3d72ff6247bb5": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_types.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::NavTileId",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "9512926f47cabaa0": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_sources.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::streaming::IStreamingCommitTarget",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Commit(const StreamingRequest&request)=0;"
+    },
+    "9554555472ada26c": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_types.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::StreamingBudget",
+      "signature": "[[nodiscard]] constexpr bool IsUnlimited()const noexcept"
+    },
+    "9720b3a5d02bf38e": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::ISimulationScheduler",
+      "signature": "virtual void SetBudget(const SimulationBudget&budget)=0;"
+    },
+    "97557709dc1a11b7": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::navigation::INavTileRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> RegisterTile(NavTileId tile,NavTileState state)=0;"
+    },
+    "97656191970fe42e": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_event_buffer.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::IPhysicsEventBuffer",
+      "signature": "virtual ~IPhysicsEventBuffer()=default;"
+    },
+    "98362837c92ff691": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::IScheduledSimulationTasks",
+      "signature": "[[nodiscard]] virtual std::vector<ScheduledSimulationTask> QueryDue(SimulationTime now)const=0;"
+    },
+    "9a0f58c90bd9fe8d": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::IScheduledSimulationTasks",
+      "signature": "[[nodiscard]] virtual foundation::Result<ScheduledSimulationTaskId> Schedule(ScheduledSimulationTask task)=0;"
+    },
+    "9a7316721d54c29d": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_priority_resolver.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingPriorityResolver",
+      "signature": "[[nodiscard]] virtual StreamingPriorityClass ResolvePriority(ChunkId chunk)const=0;"
+    },
+    "9b89aeb4fcbc9261": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::ISimulationClock",
+      "signature": "[[nodiscard]] virtual SimulationTime Now()const=0;"
+    },
+    "9bb7dbbd5db0a818": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_runtime.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingQuery",
+      "signature": "virtual ~IStreamingQuery()=default;"
+    },
+    "9d8270dd936b20ec": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::ISimulationCommitTarget",
+      "signature": "virtual ~ISimulationCommitTarget()=default;"
+    },
+    "9f8cadda93fddf0f": {
+      "classification": "FACTORY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation",
+      "signature": "[[nodiscard]] foundation::Result<SimulationServices> CreateSimulationServices(SimulationOptions options={},SimulationDependencies dependencies={});"
+    },
+    "a034df722be5297d": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_types.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "std",
+      "signature": "std::size_t operator()(epidemic::runtime::streaming::StreamingDemandId id)const noexcept"
+    },
+    "a4ba6b1cbc4315a8": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_types.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::PathQueryHandle",
+      "signature": "[[nodiscard]] constexpr bool operator==(const PathQueryHandle&)const noexcept=default;"
+    },
+    "a6d7f4ca651b01b9": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::IScheduledSimulationTasks",
+      "signature": "[[nodiscard]] virtual ScheduledTaskExecutionResult ExecuteDueWithinBudget(SimulationTime now,const SimulationBudget&budget)=0;"
+    },
+    "a864c122d048d263": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::INavTileRegistry",
+      "signature": "virtual ~INavTileRegistry()=default;"
+    },
+    "a869f34a06b1a872": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::physics::IPhysicsBackend",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> DestroyBody(BackendBodyHandle handle)=0;"
+    },
+    "a9543e58eb53910f": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_sources.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingWorldSource",
+      "signature": "virtual ~IStreamingWorldSource()=default;"
+    },
+    "a9ae56126be7a142": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::INavigationDataSource",
+      "signature": "virtual ~INavigationDataSource()=default;"
+    },
+    "ab02f957e53f12e8": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::navigation::INavTileRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> MarkTileDirty(NavTileId tile)=0;"
+    },
+    "ab7de562c3e82092": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_types.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::WorldMemoryEventId",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "ac10c1ea6f59ae9d": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_types.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::BackendShapeHandle",
+      "signature": "[[nodiscard]] constexpr bool operator==(const BackendShapeHandle&)const noexcept=default;"
+    },
+    "ac437f78f2a76db0": {
+      "classification": "LIFECYCLE",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_runtime.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::streaming::IStreamingController",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Shutdown()=0;"
+    },
+    "aca73164e9c48c23": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_runtime.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::streaming::IStreamingRuntime",
+      "signature": "[[nodiscard]] virtual StreamingTickResult Tick()=0;"
+    },
+    "ae77ee6556a03f26": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_types.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "std::hash",
+      "signature": "[[nodiscard]] size_t operator()(epidemic::runtime::physics::PhysicsBodyId value)const noexcept"
+    },
+    "afdbd58280a50ebf": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::physics::IPhysicsBackend",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> SimulateFixed(RuntimeFrameDuration fixed_delta)=0;"
+    },
+    "afdd1dc21c863aee": {
+      "classification": "CONSTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_types.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::StreamingPlanStepRecord",
+      "signature": "constexpr StreamingPlanStepRecord(StreamingPlanStep value,std::size_t estimated,std::size_t processed=0)noexcept"
+    },
+    "b02051a985c1bc3b": {
+      "classification": "CONSTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_types.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::StreamingPlanStepRecord",
+      "signature": "constexpr StreamingPlanStepRecord(StreamingPlanStep value)noexcept"
+    },
+    "b0502bf076eaa398": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::IWorldMemory",
+      "signature": "virtual void ExpireOldEvents(SimulationTime now)=0;"
+    },
+    "b3bf41873fc71644": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::IPhysicsStepper",
+      "signature": "virtual ~IPhysicsStepper()=default;"
+    },
+    "b45b12a1ba8c3345": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::INavigationBackend",
+      "signature": "[[nodiscard]] virtual foundation::Result<PathResult> BuildPath(const PathRequest&request,NavigationRevision revision)const=0;"
+    },
+    "b4c48e2bd72ceca2": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::ISimulationScheduler",
+      "signature": "virtual ~ISimulationScheduler()=default;"
+    },
+    "b5363abc930c0230": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::INavigationRuntime",
+      "signature": "[[nodiscard]] virtual foundation::Result<PathQueryState> GetPathState(PathQueryHandle handle)const=0;"
+    },
+    "b5caa88d51eeeb19": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_sources.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingWorldSource",
+      "signature": "[[nodiscard]] virtual std::optional<RegionId> ResolveRegion(ChunkId chunk)const=0;"
+    },
+    "b7cb8e25361b9acc": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::ISimulationRuntime",
+      "signature": "~ISimulationRuntime()override=default;"
+    },
+    "b8bdc552def7ab1f": {
+      "classification": "LIFECYCLE",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::ISimulationScheduler",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Shutdown()=0;"
+    },
+    "b99922140ea3fd13": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::IRelevancePolicy",
+      "signature": "virtual ~IRelevancePolicy()=default;"
+    },
+    "bb52e935b4111b77": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_runtime.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingController",
+      "signature": "virtual ~IStreamingController()=default;"
+    },
+    "bb9b4bc8e763cc72": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::ISimulationJob",
+      "signature": "[[nodiscard]] virtual foundation::Result<SimulationStepResult> ExecuteStep(const RuntimeBudget&budget)=0;"
+    },
+    "bbb47fb79ab4122b": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::INavCostProvider",
+      "signature": "[[nodiscard]] virtual float GetTraversalCost(const NavCostQuery&query)const=0;"
+    },
+    "bbbd254d21e7e241": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::ISimulationProposalQueue",
+      "signature": "virtual ~ISimulationProposalQueue()=default;"
+    },
+    "bc6584d500a454d8": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::navigation::INavigationRuntime",
+      "signature": "[[nodiscard]] virtual std::size_t Tick(RuntimeBudget budget)=0;"
+    },
+    "bcd2bf743370ca1a": {
+      "classification": "LIFECYCLE",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/residency_controller.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::streaming::IResidencyController",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> DeactivateChunk(ChunkId chunk)=0;"
+    },
+    "bd661c392ba09261": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_types.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::DynamicObstacleId",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "bd923e9e51724e21": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_types.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::CollisionShapeId",
+      "signature": "[[nodiscard]] constexpr bool operator==(const CollisionShapeId&)const noexcept=default;"
+    },
+    "bda846b3688c86c3": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::ISimulationScheduler",
+      "signature": "[[nodiscard]] virtual foundation::Result<SimulationTickResult> ProcessMainThreadCommits(std::uint32_t max_jobs=0)=0;"
+    },
+    "bdbf0487a889e187": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::physics::IPhysicsBackend",
+      "signature": "[[nodiscard]] virtual foundation::Result<BackendShapeHandle> CreateShape(const CollisionShapeDesc&desc)=0;"
+    },
+    "bea469b2902df368": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::ISimulationJob",
+      "signature": "virtual ~ISimulationJob()=default;"
+    },
+    "bfa123ff450326f7": {
+      "classification": "FACTORY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics",
+      "signature": "[[nodiscard]] foundation::Result<PhysicsServices> CreatePhysicsServices();"
+    },
+    "bfc438fb3ee696ac": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::ISimulationScheduler",
+      "signature": "[[nodiscard]] virtual foundation::Result<SimulationTickResult> Tick()=0;"
+    },
+    "c00eaf5f7a656b37": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_query.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::IPhysicsQuery",
+      "signature": "virtual ~IPhysicsQuery()=default;"
+    },
+    "c2523c51e7d53e70": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::ICollisionShapeRegistry",
+      "signature": "[[nodiscard]] virtual bool HasShape(CollisionShapeId id)const=0;"
+    },
+    "c2a2de92add28808": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::physics::IPhysicsStepper",
+      "signature": "[[nodiscard]] virtual foundation::Result<PhysicsStepResult> Tick(RuntimeFrameDuration delta)=0;"
+    },
+    "c5983c86df105d6f": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::physics::IPhysicsScene",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> ApplyImpulse(PhysicsBodyHandle handle,Vec3 impulse)=0;"
+    },
+    "c706b39f80e7f187": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::IPhysicsScene",
+      "signature": "virtual ~IPhysicsScene()=default;"
+    },
+    "c75bc0b4d1013857": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::IAttentionSystem",
+      "signature": "[[nodiscard]] virtual AttentionScore GetRegionAttention(RegionId region)const=0;"
+    },
+    "c8b0a64008fa0a63": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::ISimulationScheduler",
+      "signature": "[[nodiscard]] virtual foundation::Result<SimulationJobState> GetJobState(SimulationJobHandle handle)const=0;"
+    },
+    "c8c14be22603a72b": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::IScheduledSimulationTasks",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Cancel(ScheduledSimulationTaskId id)=0;"
+    },
+    "cd96f007e26d1674": {
+      "classification": "LIFECYCLE",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::physics::IPhysicsBackend",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Initialize(const PhysicsBackendOptions&options)=0;"
+    },
+    "ce1d3128c36b42cd": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::INavTileRegistry",
+      "signature": "[[nodiscard]] virtual NavTileState GetTileState(NavTileId tile)const=0;"
+    },
+    "cf4d7506d6b701d2": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_runtime.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::streaming::IStreamingRuntime",
+      "signature": "[[nodiscard]] virtual foundation::Result<StreamingDemandHandle> Request(const StreamingTarget&target,StreamingPriorityClass priority)=0;"
+    },
+    "d1c4326627c7d38a": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::IWorldMemory",
+      "signature": "virtual ~IWorldMemory()=default;"
+    },
+    "d4692a78eccaee08": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_runtime.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingQuery",
+      "signature": "[[nodiscard]] virtual StreamingStatistics GetStatistics()const=0;"
+    },
+    "d4b9e6577aa22890": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_runtime.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::simulation::ISimulationProposalQueue",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Publish(const SimulationProposalBatch&batch)=0;"
+    },
+    "d5c766fddc7d51fe": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Simulation/include/Epidemic/Runtime/Simulation/simulation_types.h",
+      "module": "EngineRuntime/Simulation",
+      "obligations": {},
+      "scope": "epidemic::runtime::simulation::ScheduledSimulationTaskId",
+      "signature": "[[nodiscard]] constexpr bool operator==(const ScheduledSimulationTaskId&)const noexcept=default;"
+    },
+    "d8405341201f5eef": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_query.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::IPhysicsQuery",
+      "signature": "[[nodiscard]] virtual foundation::Result<OverlapResult> Overlap(const OverlapQuery&query)const=0;"
+    },
+    "dae9105edf41355a": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/residency_controller.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IResidencyController",
+      "signature": "virtual ~IResidencyController()=default;"
+    },
+    "db39e0adabf61650": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_types.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::DynamicObstacleId",
+      "signature": "[[nodiscard]] constexpr bool operator==(const DynamicObstacleId&)const noexcept=default;"
+    },
+    "db5c66162d5e0925": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_runtime.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::IStreamingQuery",
+      "signature": "[[nodiscard]] virtual std::optional<StreamingProgress> GetProgress(StreamingRequestHandle request)const=0;"
+    },
+    "de725a698a7ff1f8": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_types.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "std::hash",
+      "signature": "[[nodiscard]] size_t operator()(epidemic::runtime::navigation::PathQueryId value)const noexcept"
+    },
+    "df56894544f03f5d": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_types.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::StreamingRequestHandle",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "e2204be01db50e04": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::physics::ICollisionShapeRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> RegisterShape(const CollisionShapeDesc&desc)=0;"
+    },
+    "e28b8b6b7b7dee2f": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_scene.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::IPhysicsScene",
+      "signature": "[[nodiscard]] virtual foundation::Result<PhysicsBodySnapshot> GetBodySnapshot(PhysicsBodyHandle handle)const=0;"
+    },
+    "e68fcf9c019aa36b": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_sources.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::streaming::IStreamingResourceSource",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> PrepareChunkResources(const StreamingRequest&request)=0;"
+    },
+    "e859d1092f168fae": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_types.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "std::hash",
+      "signature": "[[nodiscard]] size_t operator()(epidemic::runtime::navigation::DynamicObstacleId value)const noexcept"
+    },
+    "ef125dfbd77a2601": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_sources.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::streaming::IStreamingPersistenceSource",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> PrepareChunkData(const StreamingRequest&request)=0;"
+    },
+    "efaf4880959824a0": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_sources.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::streaming::IStreamingCommitTarget",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Rollback(const StreamingRequest&request)=0;"
+    },
+    "f177b4262587f12f": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Physics/include/Epidemic/Runtime/Physics/physics_event_buffer.h",
+      "module": "EngineRuntime/Physics",
+      "obligations": {},
+      "scope": "epidemic::runtime::physics::IPhysicsEventBuffer",
+      "signature": "[[nodiscard]] virtual std::span<const ContactEvent> Contacts()const=0;"
+    },
+    "f25eb24705d8eb5d": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_types.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::PathQueryId",
+      "signature": "[[nodiscard]] constexpr bool operator==(const PathQueryId&)const noexcept=default;"
+    },
+    "fa6d4f9163d18165": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Navigation/include/Epidemic/Runtime/Navigation/navigation_runtime.h",
+      "module": "EngineRuntime/Navigation",
+      "obligations": {},
+      "scope": "epidemic::runtime::navigation::INavigationDataSource",
+      "signature": "[[nodiscard]] virtual NavigationRevision CurrentRevision(RegionId region)const=0;"
+    },
+    "faaa49396c788c28": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_types.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {},
+      "scope": "epidemic::runtime::streaming::StreamingDemandId",
+      "signature": "[[nodiscard]] friend constexpr bool operator==(StreamingDemandId,StreamingDemandId)noexcept=default;"
+    },
+    "fdf2ca09390ab3ed": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Streaming/include/Epidemic/Runtime/Streaming/streaming_runtime.h",
+      "module": "EngineRuntime/Streaming",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::streaming::IStreamingRuntime",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> ReleaseDemand(StreamingDemandHandle demand)=0;"
+    }
+  },
+  "defects": {
+    "G3-NAV-001": {
+      "defect": "Reference path byte-budget admission is based on the actual prepared path shape, including cost-provider midpoint expansion.",
+      "fix": "EngineRuntime/Navigation/src/navigation_runtime_impl.cpp:823::NavigationRuntime::PrepareReferencePathPlan",
+      "module": "EngineRuntime/Navigation",
+      "regression": "EngineRuntime/Navigation/tests/navigation_tests.cpp:873::bool TestReferenceBudgetUsesActualPreparedShape(",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeNavigationTests"
+    },
+    "G3-NAV-002": {
+      "defect": "A successful backend/reference result remains owned across local budget/allocation failure and retry does not call the backend again.",
+      "fix": "EngineRuntime/Navigation/src/navigation_runtime_impl.cpp:737::NavigationRuntime::CompleteQuery",
+      "module": "EngineRuntime/Navigation",
+      "regression": "EngineRuntime/Navigation/tests/navigation_tests.cpp:905::bool TestBackendResultOwnershipSurvivesBudgetAndAllocationFault(",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeNavigationTests"
+    },
+    "G3-NAV-003": {
+      "defect": "Released/expired query purge occurs only after all fallible purge/query work-list preparation succeeds.",
+      "fix": "EngineRuntime/Navigation/src/navigation_runtime_impl.cpp:262::NavigationRuntime::Tick",
+      "module": "EngineRuntime/Navigation",
+      "regression": "EngineRuntime/Navigation/tests/navigation_tests.cpp:991::bool TestPurgeOccursOnlyAfterAllFallibleWorkListPreparation(",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeNavigationTests"
+    },
+    "G3-PHYS-001": {
+      "defect": "Tick uses prefix-progress acceptance: accepted delta/prefix and backend simulation are not replayed after a later fixed-step synchronization/projection failure.",
+      "fix": "EngineRuntime/Physics/src/physics_runtime_impl.cpp:682::PhysicsRuntime::Tick",
+      "module": "EngineRuntime/Physics",
+      "regression": "EngineRuntime/Physics/tests/physics_tests.cpp:945::bool TestTickSyncFailureRetriesAcceptedBackendStepWithoutResimulation(",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimePhysicsTests"
+    },
+    "G3-SIM-001": {
+      "defect": "Successful ExecuteStep output is durably owned before fallible local publication and retry does not call the job twice.",
+      "fix": "EngineRuntime/Simulation/src/simulation_runtime_impl.cpp:235::SimulationRuntime::Tick",
+      "module": "EngineRuntime/Simulation",
+      "regression": "EngineRuntime/Simulation/tests/simulation_tests.cpp:941::bool TestGoal3SimulationFaultAtomicity(",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeSimulationTests"
+    },
+    "G3-SIM-002": {
+      "defect": "Post-commit pruning/result bookkeeping is allocation-safe so late local allocation cannot make an accepted prefix ambiguous.",
+      "fix": "EngineRuntime/Simulation/src/simulation_runtime_impl.cpp:1334::SimulationRuntime::PruneTerminalJobs",
+      "module": "EngineRuntime/Simulation",
+      "regression": "EngineRuntime/Simulation/tests/simulation_tests.cpp:941::bool TestGoal3SimulationFaultAtomicity(",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeSimulationTests"
+    },
+    "G3-SIM-AUDIT-001": {
+      "defect": "Once retryable shutdown starts, new Tick/Schedule/main-thread/proposal work is rejected while cleanup ownership remains retryable.",
+      "fix": "EngineRuntime/Simulation/src/simulation_runtime_impl.cpp:485::SimulationRuntime::Shutdown",
+      "module": "EngineRuntime/Simulation",
+      "regression": "EngineRuntime/Simulation/tests/simulation_tests.cpp:941::bool TestGoal3SimulationFaultAtomicity(",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeSimulationTests"
+    },
+    "G3-SIM-AUDIT-002": {
+      "defect": "SetAttention contains first-insertion allocation failure in Result and preserves prior attention state.",
+      "fix": "EngineRuntime/Simulation/src/simulation_runtime_impl.cpp:536::SimulationRuntime::SetAttention",
+      "module": "EngineRuntime/Simulation",
+      "regression": "EngineRuntime/Simulation/tests/simulation_tests.cpp:941::bool TestGoal3SimulationFaultAtomicity(",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeSimulationTests"
+    },
+    "G3-SIM-AUDIT-003": {
+      "defect": "Proposal Publish contains allocation failure and leaves the proposal queue unchanged.",
+      "fix": "EngineRuntime/Simulation/src/simulation_runtime_impl.cpp:835::SimulationRuntime::Publish",
+      "module": "EngineRuntime/Simulation",
+      "regression": "EngineRuntime/Simulation/tests/simulation_tests.cpp:941::bool TestGoal3SimulationFaultAtomicity(",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeSimulationTests"
+    },
+    "G3-STR-001": {
+      "defect": "Runtime-local Tick preparation/allocation failure must propagate before mutation rather than becoming a semantic request failure.",
+      "fix": "EngineRuntime/Streaming/src/streaming_runtime_impl.cpp:824::StreamingRuntime::Tick",
+      "module": "EngineRuntime/Streaming",
+      "regression": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1500::bool TestTickAllocationPreflightFailuresPropagateWithoutMutation(",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeStreamingTests"
+    },
+    "G3-STR-002": {
+      "defect": "A successful ExecuteStep result is accepted exactly once and retained across later local commit failure so retry does not execute the backend step twice.",
+      "fix": "EngineRuntime/Streaming/src/streaming_runtime_impl.cpp:1171::StreamingRuntime::AdvanceRequest",
+      "module": "EngineRuntime/Streaming",
+      "regression": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1546::bool TestAcceptedStepResultIsNotExecutedAgainAfterLocalCommitFailure(",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeStreamingTests"
+    },
+    "G3-STR-003": {
+      "defect": "A Commit step in a progressive plan is unique and terminal, preventing external commit before later work.",
+      "fix": "EngineRuntime/Streaming/src/streaming_runtime_impl.cpp:1031::StreamingRuntime::ValidatePlan",
+      "module": "EngineRuntime/Streaming",
+      "regression": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1573::bool TestCommitStepMustBeTerminalAndUniqueWhenPresent(",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeStreamingTests"
+    },
+    "G3-STR-004": {
+      "defect": "Request publication rollback restores prior chunk state/mapping and identity allocators when later publication fails.",
+      "fix": "EngineRuntime/Streaming/src/streaming_runtime_impl.cpp:156::StreamingRuntime::Request",
+      "module": "EngineRuntime/Streaming",
+      "regression": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1423::bool TestRequestPublicationFailureRestoresPublishedState(",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeStreamingTests"
+    },
+    "M3C-PHYS-001": {
+      "defect": "Finite large ray directions are normalized with sufficient range so validation cannot turn a valid non-zero direction into zero through float overflow.",
+      "fix": "EngineRuntime/Physics/src/physics_runtime_impl.cpp:1158::PhysicsRuntime::Length",
+      "module": "EngineRuntime/Physics",
+      "regression": "EngineRuntime/Physics/tests/physics_tests.cpp:1078::bool TestRaycastLargeFiniteDirectionNormalizesSafely(",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimePhysicsTests"
+    }
+  },
+  "external_boundary": {
+    "2493c50675a84149": {
+      "callable_id": "456b863758383b50",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "24e9c40ce9645b6c": {
+      "callable_id": "102521c7366dcf60",
+      "module": "EngineRuntime/Navigation",
+      "status": "REVIEWED"
+    },
+    "4b4cb79e3d5dcf7f": {
+      "callable_id": "8a415d0c9f8943bd",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "546616215f1d6f3f": {
+      "callable_id": "7e4ada52d1fef486",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "61ae3e3927ab3971": {
+      "callable_id": "33e36f70beca629d",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "705d679f3e668705": {
+      "callable_id": "8b6dbfae7051c431",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "7528084fc8f4ecdf": {
+      "callable_id": "1d3ac65adcab297e",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "7bcdfbf723cb916b": {
+      "callable_id": "4736e0433d0fcbe0",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "95cebb2bc6bc0d5f": {
+      "callable_id": "ac10c1ea6f59ae9d",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "a3a2f6e38e1b1da8": {
+      "callable_id": "07aa50346e4f43ae",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "a926e0ffaf171911": {
+      "callable_id": "bdbf0487a889e187",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "b0166be35d10dd0f": {
+      "callable_id": "a869f34a06b1a872",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "c9bdf6805573bfe6": {
+      "callable_id": "26632313cf26ded4",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "d1f4d98860537ce8": {
+      "callable_id": "607d8b02fa8a4471",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "d34d5bac912d61fb": {
+      "callable_id": "cd96f007e26d1674",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "eaaee759b6d3be60": {
+      "callable_id": "60d6c9c3f96c00fb",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    }
+  },
+  "lifecycle": {
+    "33d415967d2315a3": {
+      "callable_id": "cd96f007e26d1674",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "98e48f2462921331": {
+      "callable_id": "6f97c215bb3cfce5",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "996f2613eaf51948": {
+      "callable_id": "ac437f78f2a76db0",
+      "module": "EngineRuntime/Streaming",
+      "status": "REVIEWED"
+    },
+    "aec00b823f6d17e8": {
+      "callable_id": "b8bdc552def7ab1f",
+      "module": "EngineRuntime/Simulation",
+      "status": "REVIEWED"
+    },
+    "c4212b33020a7c28": {
+      "callable_id": "299a7ab298067aa2",
+      "module": "EngineRuntime/Streaming",
+      "status": "REVIEWED"
+    },
+    "d5f92e7b6f2f57be": {
+      "callable_id": "bcd2bf743370ca1a",
+      "module": "EngineRuntime/Streaming",
+      "status": "REVIEWED"
+    }
+  },
+  "schema_version": 1,
+  "stale_identity": {
+    "04974e55ef111ec2": {
+      "callable_id": "9a0f58c90bd9fe8d",
+      "module": "EngineRuntime/Simulation",
+      "status": "REVIEWED"
+    },
+    "0a0a0ade68072e4e": {
+      "callable_id": "7eb1a8941604c4ce",
+      "module": "EngineRuntime/Simulation",
+      "status": "REVIEWED"
+    },
+    "0c781a5cc2583192": {
+      "callable_id": "a869f34a06b1a872",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "0cdd747f56bc64ef": {
+      "callable_id": "b8bdc552def7ab1f",
+      "module": "EngineRuntime/Simulation",
+      "status": "REVIEWED"
+    },
+    "0e755843a0425067": {
+      "callable_id": "afdbd58280a50ebf",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "0fc94d7afa170344": {
+      "callable_id": "0226dbd0dde066a8",
+      "module": "EngineRuntime/Simulation",
+      "status": "REVIEWED"
+    },
+    "1655c05b7dfa2cf0": {
+      "callable_id": "115089a8c8233feb",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "1b79773d1346f9b9": {
+      "callable_id": "ac437f78f2a76db0",
+      "module": "EngineRuntime/Streaming",
+      "status": "REVIEWED"
+    },
+    "21df44005e80588c": {
+      "callable_id": "d4b9e6577aa22890",
+      "module": "EngineRuntime/Simulation",
+      "status": "REVIEWED"
+    },
+    "2ed14f8f05775358": {
+      "callable_id": "2165b097b0e24e2a",
+      "module": "EngineRuntime/Simulation",
+      "status": "REVIEWED"
+    },
+    "30bb6f75e4c191f1": {
+      "callable_id": "3fd1f34e726f0da2",
+      "module": "EngineRuntime/Simulation",
+      "status": "REVIEWED"
+    },
+    "3671cac5f06eae01": {
+      "callable_id": "ef125dfbd77a2601",
+      "module": "EngineRuntime/Streaming",
+      "status": "REVIEWED"
+    },
+    "429c4e063b633673": {
+      "callable_id": "ab02f957e53f12e8",
+      "module": "EngineRuntime/Navigation",
+      "status": "REVIEWED"
+    },
+    "45b4e7c0a683279e": {
+      "callable_id": "bdbf0487a889e187",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "47dec509997eee17": {
+      "callable_id": "8b6dbfae7051c431",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "4a44fd11d2873f9b": {
+      "callable_id": "821151c9e563fa43",
+      "module": "EngineRuntime/Streaming",
+      "status": "REVIEWED"
+    },
+    "4af798025b9a4681": {
+      "callable_id": "4b4498e58f4860c8",
+      "module": "EngineRuntime/Simulation",
+      "status": "REVIEWED"
+    },
+    "4cdc62f25e264548": {
+      "callable_id": "97557709dc1a11b7",
+      "module": "EngineRuntime/Navigation",
+      "status": "REVIEWED"
+    },
+    "550913c86983cdcf": {
+      "callable_id": "cd96f007e26d1674",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "60c1a0cd29dc1bf4": {
+      "callable_id": "bcd2bf743370ca1a",
+      "module": "EngineRuntime/Streaming",
+      "status": "REVIEWED"
+    },
+    "627111ad1c08beaa": {
+      "callable_id": "456b863758383b50",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "66caef6145bffe07": {
+      "callable_id": "944929ff033741a8",
+      "module": "EngineRuntime/Navigation",
+      "status": "REVIEWED"
+    },
+    "68d56c02e06d7c0f": {
+      "callable_id": "c5983c86df105d6f",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "69ad6bdfce79f42a": {
+      "callable_id": "1983d34ea1235fa2",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "6eb9f1639a0a72e5": {
+      "callable_id": "5622a0fcd7464e2a",
+      "module": "EngineRuntime/Streaming",
+      "status": "REVIEWED"
+    },
+    "739a7bb0d15dc01e": {
+      "callable_id": "c8c14be22603a72b",
+      "module": "EngineRuntime/Simulation",
+      "status": "REVIEWED"
+    },
+    "78afe01077391595": {
+      "callable_id": "3376744e2cdcecb5",
+      "module": "EngineRuntime/Simulation",
+      "status": "REVIEWED"
+    },
+    "7d6f989fb36fc9dd": {
+      "callable_id": "12ef4e73729f1baa",
+      "module": "EngineRuntime/Streaming",
+      "status": "REVIEWED"
+    },
+    "7f5175e0f3c9aaca": {
+      "callable_id": "36453f603e5d6ac3",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "80eae47542f0c5eb": {
+      "callable_id": "cf4d7506d6b701d2",
+      "module": "EngineRuntime/Streaming",
+      "status": "REVIEWED"
+    },
+    "9072c90a3cbea8bf": {
+      "callable_id": "05553a45ceea690a",
+      "module": "EngineRuntime/Simulation",
+      "status": "REVIEWED"
+    },
+    "9143a6f70e5b3f6b": {
+      "callable_id": "b0502bf076eaa398",
+      "module": "EngineRuntime/Simulation",
+      "status": "REVIEWED"
+    },
+    "9464092a151bdfb9": {
+      "callable_id": "3fed77236decd79e",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "b279369f2555d8d3": {
+      "callable_id": "902446e6a5e5fd96",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "b4cf780299837b40": {
+      "callable_id": "9720b3a5d02bf38e",
+      "module": "EngineRuntime/Simulation",
+      "status": "REVIEWED"
+    },
+    "b566ec3ed20162a9": {
+      "callable_id": "6f97c215bb3cfce5",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "b5f6f5eb8e19fd25": {
+      "callable_id": "e2204be01db50e04",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "ba43f7cc7ed13fe4": {
+      "callable_id": "4cc1248eb325e076",
+      "module": "EngineRuntime/Navigation",
+      "status": "REVIEWED"
+    },
+    "c4bc9a4ee91db3c1": {
+      "callable_id": "efaf4880959824a0",
+      "module": "EngineRuntime/Streaming",
+      "status": "REVIEWED"
+    },
+    "cce8a01c5c92a049": {
+      "callable_id": "6b4a1377368d6dde",
+      "module": "EngineRuntime/Simulation",
+      "status": "REVIEWED"
+    },
+    "cd2bc707b3e1003e": {
+      "callable_id": "7142f14af7c1b278",
+      "module": "EngineRuntime/Navigation",
+      "status": "REVIEWED"
+    },
+    "d483598c3f0dd9a5": {
+      "callable_id": "8e7c10ae349eae3b",
+      "module": "EngineRuntime/Simulation",
+      "status": "REVIEWED"
+    },
+    "dd226fe5301079fb": {
+      "callable_id": "fdf2ca09390ab3ed",
+      "module": "EngineRuntime/Streaming",
+      "status": "REVIEWED"
+    },
+    "e0b68f9f997cbe67": {
+      "callable_id": "3de99752159a4a45",
+      "module": "EngineRuntime/Streaming",
+      "status": "REVIEWED"
+    },
+    "e0f1dbede1331232": {
+      "callable_id": "2ad0c339921bbdcc",
+      "module": "EngineRuntime/Simulation",
+      "status": "REVIEWED"
+    },
+    "e5c29a51426b25d6": {
+      "callable_id": "e68fcf9c019aa36b",
+      "module": "EngineRuntime/Streaming",
+      "status": "REVIEWED"
+    },
+    "ee0e4d54b480a4c2": {
+      "callable_id": "33e36f70beca629d",
+      "module": "EngineRuntime/Physics",
+      "status": "REVIEWED"
+    },
+    "f89508887ee5384d": {
+      "callable_id": "299a7ab298067aa2",
+      "module": "EngineRuntime/Streaming",
+      "status": "REVIEWED"
+    },
+    "fa65ebe86b7be180": {
+      "callable_id": "9512926f47cabaa0",
+      "module": "EngineRuntime/Streaming",
+      "status": "REVIEWED"
+    }
+  }
+}

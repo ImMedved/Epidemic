@@ -15,4 +15,21 @@ enum class AssetState
     Invalid,
     Deprecated,
 };
+
+
+[[nodiscard]] constexpr bool IsValidAssetState(AssetState value) noexcept
+{
+    switch (value)
+    {
+    case AssetState::Unknown:
+    case AssetState::Discovered:
+    case AssetState::Indexed:
+    case AssetState::Validated:
+    case AssetState::Missing:
+    case AssetState::Invalid:
+    case AssetState::Deprecated:
+        return true;
+    }
+    return false;
+}
 } 

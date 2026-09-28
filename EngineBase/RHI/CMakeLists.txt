@@ -14,6 +14,6 @@ target_link_libraries(EpidemicRHI
     PUBLIC EpidemicFoundation
 )
 
-target_compile_features(EpidemicRHI PUBLIC cxx_std_20)
+target_compile_features(EpidemicRHI PUBLIC cxx_std_23)
 
 epidemic_configure_target(EpidemicRHI)

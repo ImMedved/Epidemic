@@ -1,0 +1,253 @@
+{
+  "modules": {
+    "EngineRuntime/Audio": {
+      "Authoritative state": {
+        "correction": "Authoritative mutable records and lifecycle/revision state were traced through all public mutators.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Only Foundation/RuntimeFoundation direct dependencies remain; no Runtime peer-major dependency was added.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Derived caches, staged state and lookup/index structures were checked for publication ordering and invalidation.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "External sink/backend/bridge boundaries and their Result/exception semantics were reviewed against targeted fault regressions.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Capacity, ID/revision bounds, bounded events/queues and frame/work ordering limits are exercised by tests.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Identity allocation, generation/revision exhaustion and stale handle paths are covered where the module owns them.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Numeric domains, ownership, ordering and publication invariants were checked against implementation and tests.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "These modules own transient runtime state; no new Goal 3 persistence contract is introduced.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Public type domains, enum/numeric validation and factory surface were reviewed; Block G adds no public API.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "Every generated mutator family has precondition, success, failure and no-op semantics mapped to regressions.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Queries return detached/validated observations and stale identity behavior is covered where applicable.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Module responsibility and forbidden cross-major ownership were checked against public headers, implementation and module documentation.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "No persistence restore surface exists locally; snapshot/query objects are observational and detached.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Allowed, forbidden and terminal/recovery transitions are represented by explicit tests.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "No private worker ownership is introduced; mutable runtime use remains caller-serialized/synchronous.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineRuntime/Renderer": {
+      "Authoritative state": {
+        "correction": "Authoritative mutable records and lifecycle/revision state were traced through all public mutators.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Only Foundation/RuntimeFoundation direct dependencies remain; no Runtime peer-major dependency was added.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Derived caches, staged state and lookup/index structures were checked for publication ordering and invalidation.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "External sink/backend/bridge boundaries and their Result/exception semantics were reviewed against targeted fault regressions.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Capacity, ID/revision bounds, bounded events/queues and frame/work ordering limits are exercised by tests.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Identity allocation, generation/revision exhaustion and stale handle paths are covered where the module owns them.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Numeric domains, ownership, ordering and publication invariants were checked against implementation and tests.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "These modules own transient runtime state; no new Goal 3 persistence contract is introduced.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Public type domains, enum/numeric validation and factory surface were reviewed; Block G adds no public API.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "Every generated mutator family has precondition, success, failure and no-op semantics mapped to regressions.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Queries return detached/validated observations and stale identity behavior is covered where applicable.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Module responsibility and forbidden cross-major ownership were checked against public headers, implementation and module documentation.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "No persistence restore surface exists locally; snapshot/query objects are observational and detached.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Allowed, forbidden and terminal/recovery transitions are represented by explicit tests.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "No private worker ownership is introduced; mutable runtime use remains caller-serialized/synchronous.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineRuntime/Scene": {
+      "Authoritative state": {
+        "correction": "Node records, hierarchy links, local transforms/bounds, visibility/mobility and authoritative scene revision are local state.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Only RuntimeFoundation/Foundation are direct dependencies; no Runtime peer-major link exists.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "World-transform/bounds are derived from local state and hierarchy; sorted snapshot/query vectors are detached observations.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "No external callback/backend/provider is invoked by Scene production code in Goal 3.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "No runtime budget surface. Deep hierarchy traversal is iterative; numeric limits and revision/ID exhaustion are explicit boundaries.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "SceneNodeId is monotonic/non-reused in the tested lifecycle; scene revision is uint64 and exhaustion is rejected before publication.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Acyclic hierarchy, valid parent ownership, finite/non-degenerate TRS, representable subtree world state and valid bounds are pre-commit invariants.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "SceneSnapshot is detached observation, not persistence state; dirty flags are transient and Restore is intentionally absent in Goal 3.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "41 public callables across the Scene public headers; public include tree is unchanged by Block E and standalone headers are checked.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "Create/destroy/reparent, mobility/visibility, transform/bounds writes and dirty clears are reviewed with atomicity/no-op regressions.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Node/parent/children, transform/bounds, dirty state, queries, revision and snapshot APIs provide invariant observation.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Scene owns transient runtime nodes, hierarchy, transforms, bounds, visibility/mobility metadata, dirty bookkeeping and spatial observation only.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "CaptureSnapshot is observation-only; no Scene restore/checkpoint contract belongs to Goal 3.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Per-node existence and hierarchy attachment form the local lifecycle; module-wide shutdown/freeze state does not exist.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "No synchronization primitive or concurrent-call guarantee is exposed; tested behavior is synchronous.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineRuntime/Support": {
+      "Authoritative state": {
+        "correction": "Owns composition root, adapter ownership, coordinator pending-frame/shutdown bookkeeping and reference-adapter local ownership only.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Support is the allowed cross-major Runtime composition layer and links Runtime majors plus Core/Foundation; majors do not link back to Support.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Pose dual indexes, prepared streaming data, lease tables and reference event batch are derived/integration state with explicit strong-guarantee publication.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "Production dependencies and event/resource/backend callbacks are explicit typed ports; Result/exception containment reviewed at adapter/coordinator boundaries.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Fixed 12-step update/shutdown sequences, coordinator reserved bookkeeping, per-major budgets and bounded adapter queues/ledgers are explicit.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Support does not create a second global identity authority; local reference IDs/cursors commit only with authoritative publication.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "One adapter object per advertised role set, accepted-prefix ownership, no lost lease/projection/event ownership, terminal coordinator semantics.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "Support has no save-authoritative persistent state; composition/adapters/pending frame/shutdown cursors are transient runtime state.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Public Support surface is runtime_support.h; no Framework type dependency is introduced into EngineRuntime.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "Register/Prepare/Commit/Tick/Shutdown and typed adapter mutations reviewed for precondition, success and failure atomicity.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Orders, shutdown flags, pose/prepared-data/projection queries return explicit observations without becoming second authoritative state.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Official Runtime composition/cross-major adapter layer; no duplicate gameplay/world ownership.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "N/A for module-level persistence snapshot/restore; Support exposes detached integration observations and private retry state instead.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Coordinator active -> shutdown-started -> complete, pending-frame retry, adapter cleanup and projection/lease ownership transitions reviewed.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "No public multi-thread mutation guarantee is claimed; composition/coordinator mutation is owner-thread orchestration and external callbacks are contained.",
+        "status": "REVIEWED"
+      }
+    }
+  },
+  "schema_version": 1
+}

@@ -1,0 +1,858 @@
+{
+  "modules": {
+    "EngineFramework/GameplayWorldStateOwners/Entities": {
+      "Responsibility": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Entities.md:5::## Responsibility"
+        ],
+        "correction": "B02 reviewed Responsibility against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Public headers and types": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Entities.md:9::## Public headers and types"
+        ],
+        "correction": "B02 reviewed Public headers and types against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Dependency list": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Entities.md:13::## Dependency list"
+        ],
+        "correction": "B02 reviewed Dependency list against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Entities.md:17::## External ports/callbacks/providers/backends"
+        ],
+        "correction": "B02 reviewed External ports/callbacks/providers/backends against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Authoritative state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Entities.md:21::## Authoritative state"
+        ],
+        "correction": "B02 reviewed Authoritative state against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Derived/cache/index state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Entities.md:25::## Derived/cache/index state"
+        ],
+        "correction": "B02 reviewed Derived/cache/index state against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Entities.md:29::## ID spaces, generations, revisions and cursors"
+        ],
+        "correction": "B02 reviewed ID spaces, generations, revisions and cursors against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "State machines": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Entities.md:33::## State machines"
+        ],
+        "correction": "B02 reviewed State machines against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Persistent and transient state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Entities.md:37::## Persistent and transient state"
+        ],
+        "correction": "B02 reviewed Persistent and transient state against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Snapshot/restore contract": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Entities.md:41::## Snapshot/restore contract"
+        ],
+        "correction": "B02 reviewed Snapshot/restore contract against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Threading contract": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Entities.md:45::## Threading contract"
+        ],
+        "correction": "B02 reviewed Threading contract against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Public mutation API": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Entities.md:49::## Public mutation API"
+        ],
+        "correction": "B02 reviewed Public mutation API against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Read/query API for invariants": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Entities.md:53::## Read/query API for invariants"
+        ],
+        "correction": "B02 reviewed Read/query API for invariants against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Local invariants": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Entities.md:57::## Local invariants"
+        ],
+        "correction": "B02 reviewed Local invariants against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Entities.md:61::## Hard limits, budgets and complexity bounds"
+        ],
+        "correction": "B02 reviewed Hard limits, budgets and complexity bounds against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Materials": {
+      "Responsibility": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Materials.md:5::## Responsibility"
+        ],
+        "correction": "B02 reviewed Responsibility against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Public headers and types": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Materials.md:9::## Public headers and types"
+        ],
+        "correction": "B02 reviewed Public headers and types against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Dependency list": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Materials.md:13::## Dependency list"
+        ],
+        "correction": "B02 reviewed Dependency list against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Materials.md:17::## External ports/callbacks/providers/backends"
+        ],
+        "correction": "B02 reviewed External ports/callbacks/providers/backends against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Authoritative state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Materials.md:21::## Authoritative state"
+        ],
+        "correction": "B02 reviewed Authoritative state against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Derived/cache/index state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Materials.md:25::## Derived/cache/index state"
+        ],
+        "correction": "B02 reviewed Derived/cache/index state against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Materials.md:29::## ID spaces, generations, revisions and cursors"
+        ],
+        "correction": "B02 reviewed ID spaces, generations, revisions and cursors against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "State machines": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Materials.md:33::## State machines"
+        ],
+        "correction": "B02 reviewed State machines against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Persistent and transient state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Materials.md:37::## Persistent and transient state"
+        ],
+        "correction": "B02 reviewed Persistent and transient state against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Snapshot/restore contract": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Materials.md:41::## Snapshot/restore contract"
+        ],
+        "correction": "B02 reviewed Snapshot/restore contract against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Threading contract": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Materials.md:45::## Threading contract"
+        ],
+        "correction": "B02 reviewed Threading contract against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Public mutation API": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Materials.md:49::## Public mutation API"
+        ],
+        "correction": "B02 reviewed Public mutation API against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Read/query API for invariants": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Materials.md:53::## Read/query API for invariants"
+        ],
+        "correction": "B02 reviewed Read/query API for invariants against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Local invariants": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Materials.md:57::## Local invariants"
+        ],
+        "correction": "B02 reviewed Local invariants against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Materials.md:61::## Hard limits, budgets and complexity bounds"
+        ],
+        "correction": "B02 reviewed Hard limits, budgets and complexity bounds against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Environment": {
+      "Responsibility": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Environment.md:5::## Responsibility"
+        ],
+        "correction": "B02 reviewed Responsibility against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Public headers and types": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Environment.md:9::## Public headers and types"
+        ],
+        "correction": "B02 reviewed Public headers and types against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Dependency list": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Environment.md:13::## Dependency list"
+        ],
+        "correction": "B02 reviewed Dependency list against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Environment.md:17::## External ports/callbacks/providers/backends"
+        ],
+        "correction": "B02 reviewed External ports/callbacks/providers/backends against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Authoritative state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Environment.md:21::## Authoritative state"
+        ],
+        "correction": "B02 reviewed Authoritative state against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Derived/cache/index state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Environment.md:25::## Derived/cache/index state"
+        ],
+        "correction": "B02 reviewed Derived/cache/index state against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Environment.md:29::## ID spaces, generations, revisions and cursors"
+        ],
+        "correction": "B02 reviewed ID spaces, generations, revisions and cursors against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "State machines": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Environment.md:33::## State machines"
+        ],
+        "correction": "B02 reviewed State machines against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Persistent and transient state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Environment.md:37::## Persistent and transient state"
+        ],
+        "correction": "B02 reviewed Persistent and transient state against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Snapshot/restore contract": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Environment.md:41::## Snapshot/restore contract"
+        ],
+        "correction": "B02 reviewed Snapshot/restore contract against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Threading contract": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Environment.md:45::## Threading contract"
+        ],
+        "correction": "B02 reviewed Threading contract against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Public mutation API": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Environment.md:49::## Public mutation API"
+        ],
+        "correction": "B02 reviewed Public mutation API against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Read/query API for invariants": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Environment.md:53::## Read/query API for invariants"
+        ],
+        "correction": "B02 reviewed Read/query API for invariants against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Local invariants": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Environment.md:57::## Local invariants"
+        ],
+        "correction": "B02 reviewed Local invariants against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Environment.md:61::## Hard limits, budgets and complexity bounds"
+        ],
+        "correction": "B02 reviewed Hard limits, budgets and complexity bounds against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Conditions": {
+      "Responsibility": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Conditions.md:5::## Responsibility"
+        ],
+        "correction": "B02 reviewed Responsibility against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Public headers and types": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Conditions.md:9::## Public headers and types"
+        ],
+        "correction": "B02 reviewed Public headers and types against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Dependency list": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Conditions.md:13::## Dependency list"
+        ],
+        "correction": "B02 reviewed Dependency list against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Conditions.md:17::## External ports/callbacks/providers/backends"
+        ],
+        "correction": "B02 reviewed External ports/callbacks/providers/backends against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Authoritative state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Conditions.md:21::## Authoritative state"
+        ],
+        "correction": "B02 reviewed Authoritative state against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Derived/cache/index state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Conditions.md:25::## Derived/cache/index state"
+        ],
+        "correction": "B02 reviewed Derived/cache/index state against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Conditions.md:29::## ID spaces, generations, revisions and cursors"
+        ],
+        "correction": "B02 reviewed ID spaces, generations, revisions and cursors against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "State machines": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Conditions.md:33::## State machines"
+        ],
+        "correction": "B02 reviewed State machines against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Persistent and transient state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Conditions.md:37::## Persistent and transient state"
+        ],
+        "correction": "B02 reviewed Persistent and transient state against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Snapshot/restore contract": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Conditions.md:41::## Snapshot/restore contract"
+        ],
+        "correction": "B02 reviewed Snapshot/restore contract against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Threading contract": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Conditions.md:45::## Threading contract"
+        ],
+        "correction": "B02 reviewed Threading contract against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Public mutation API": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Conditions.md:49::## Public mutation API"
+        ],
+        "correction": "B02 reviewed Public mutation API against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Read/query API for invariants": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Conditions.md:53::## Read/query API for invariants"
+        ],
+        "correction": "B02 reviewed Read/query API for invariants against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Local invariants": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Conditions.md:57::## Local invariants"
+        ],
+        "correction": "B02 reviewed Local invariants against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Conditions.md:61::## Hard limits, budgets and complexity bounds"
+        ],
+        "correction": "B02 reviewed Hard limits, budgets and complexity bounds against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Effects": {
+      "Responsibility": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Effects.md:5::## Responsibility"
+        ],
+        "correction": "B02 reviewed Responsibility against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Public headers and types": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Effects.md:9::## Public headers and types"
+        ],
+        "correction": "B02 reviewed Public headers and types against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Dependency list": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Effects.md:13::## Dependency list"
+        ],
+        "correction": "B02 reviewed Dependency list against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Effects.md:17::## External ports/callbacks/providers/backends"
+        ],
+        "correction": "B02 reviewed External ports/callbacks/providers/backends against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Authoritative state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Effects.md:21::## Authoritative state"
+        ],
+        "correction": "B02 reviewed Authoritative state against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Derived/cache/index state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Effects.md:25::## Derived/cache/index state"
+        ],
+        "correction": "B02 reviewed Derived/cache/index state against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Effects.md:29::## ID spaces, generations, revisions and cursors"
+        ],
+        "correction": "B02 reviewed ID spaces, generations, revisions and cursors against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "State machines": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Effects.md:33::## State machines"
+        ],
+        "correction": "B02 reviewed State machines against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Persistent and transient state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Effects.md:37::## Persistent and transient state"
+        ],
+        "correction": "B02 reviewed Persistent and transient state against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Snapshot/restore contract": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Effects.md:41::## Snapshot/restore contract"
+        ],
+        "correction": "B02 reviewed Snapshot/restore contract against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Threading contract": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Effects.md:45::## Threading contract"
+        ],
+        "correction": "B02 reviewed Threading contract against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Public mutation API": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Effects.md:49::## Public mutation API"
+        ],
+        "correction": "B02 reviewed Public mutation API against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Read/query API for invariants": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Effects.md:53::## Read/query API for invariants"
+        ],
+        "correction": "B02 reviewed Read/query API for invariants against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Local invariants": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Effects.md:57::## Local invariants"
+        ],
+        "correction": "B02 reviewed Local invariants against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Effects.md:61::## Hard limits, budgets and complexity bounds"
+        ],
+        "correction": "B02 reviewed Hard limits, budgets and complexity bounds against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Interaction": {
+      "Responsibility": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Interaction.md:5::## Responsibility"
+        ],
+        "correction": "B02 reviewed Responsibility against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Public headers and types": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Interaction.md:9::## Public headers and types"
+        ],
+        "correction": "B02 reviewed Public headers and types against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Dependency list": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Interaction.md:13::## Dependency list"
+        ],
+        "correction": "B02 reviewed Dependency list against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Interaction.md:17::## External ports/callbacks/providers/backends"
+        ],
+        "correction": "B02 reviewed External ports/callbacks/providers/backends against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Authoritative state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Interaction.md:21::## Authoritative state"
+        ],
+        "correction": "B02 reviewed Authoritative state against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Derived/cache/index state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Interaction.md:25::## Derived/cache/index state"
+        ],
+        "correction": "B02 reviewed Derived/cache/index state against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Interaction.md:29::## ID spaces, generations, revisions and cursors"
+        ],
+        "correction": "B02 reviewed ID spaces, generations, revisions and cursors against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "State machines": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Interaction.md:33::## State machines"
+        ],
+        "correction": "B02 reviewed State machines against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Persistent and transient state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Interaction.md:37::## Persistent and transient state"
+        ],
+        "correction": "B02 reviewed Persistent and transient state against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Snapshot/restore contract": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Interaction.md:41::## Snapshot/restore contract"
+        ],
+        "correction": "B02 reviewed Snapshot/restore contract against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Threading contract": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Interaction.md:45::## Threading contract"
+        ],
+        "correction": "B02 reviewed Threading contract against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Public mutation API": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Interaction.md:49::## Public mutation API"
+        ],
+        "correction": "B02 reviewed Public mutation API against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Read/query API for invariants": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Interaction.md:53::## Read/query API for invariants"
+        ],
+        "correction": "B02 reviewed Read/query API for invariants against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Local invariants": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Interaction.md:57::## Local invariants"
+        ],
+        "correction": "B02 reviewed Local invariants against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Interaction.md:61::## Hard limits, budgets and complexity bounds"
+        ],
+        "correction": "B02 reviewed Hard limits, budgets and complexity bounds against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Ownership": {
+      "Responsibility": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Ownership.md:5::## Responsibility"
+        ],
+        "correction": "B02 reviewed Responsibility against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Public headers and types": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Ownership.md:9::## Public headers and types"
+        ],
+        "correction": "B02 reviewed Public headers and types against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Dependency list": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Ownership.md:13::## Dependency list"
+        ],
+        "correction": "B02 reviewed Dependency list against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Ownership.md:17::## External ports/callbacks/providers/backends"
+        ],
+        "correction": "B02 reviewed External ports/callbacks/providers/backends against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Authoritative state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Ownership.md:21::## Authoritative state"
+        ],
+        "correction": "B02 reviewed Authoritative state against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Derived/cache/index state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Ownership.md:25::## Derived/cache/index state"
+        ],
+        "correction": "B02 reviewed Derived/cache/index state against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Ownership.md:29::## ID spaces, generations, revisions and cursors"
+        ],
+        "correction": "B02 reviewed ID spaces, generations, revisions and cursors against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "State machines": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Ownership.md:33::## State machines"
+        ],
+        "correction": "B02 reviewed State machines against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Persistent and transient state": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Ownership.md:37::## Persistent and transient state"
+        ],
+        "correction": "B02 reviewed Persistent and transient state against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Snapshot/restore contract": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Ownership.md:41::## Snapshot/restore contract"
+        ],
+        "correction": "B02 reviewed Snapshot/restore contract against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Threading contract": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Ownership.md:45::## Threading contract"
+        ],
+        "correction": "B02 reviewed Threading contract against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Public mutation API": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Ownership.md:49::## Public mutation API"
+        ],
+        "correction": "B02 reviewed Public mutation API against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Read/query API for invariants": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Ownership.md:53::## Read/query API for invariants"
+        ],
+        "correction": "B02 reviewed Read/query API for invariants against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Local invariants": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Ownership.md:57::## Local invariants"
+        ],
+        "correction": "B02 reviewed Local invariants against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "REVIEWED",
+        "evidence": [
+          "docs/EngineFramework/Ownership.md:61::## Hard limits, budgets and complexity bounds"
+        ],
+        "correction": "B02 reviewed Hard limits, budgets and complexity bounds against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "rationale": "Serial integration may copy the REVIEWED decision into canonical generated dossiers after merging all eight independent deltas; this worker does not edit docs/freeze/**."
+      }
+    }
+  }
+}

@@ -1,0 +1,155 @@
+{
+  "block": "B05",
+  "defects": {
+    "G4-INFRA-001/B05": {
+      "fix": "Replaced owned helper use with private seams in Perception, Knowledge, NavigationSemantics, AI and Simulation.",
+      "logical_id": "G4-INFRA-001",
+      "module": "B05 owned test surface",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:948::epidemic::gameplay::perception::internal_test::ArmAllocationFault(point);",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:948::epidemic::gameplay::perception::internal_test::ArmAllocationFault(point);",
+          "target": "EpidemicGameFrameworkPerceptionTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:363::epidemic::gameplay::knowledge::internal_test::ArmAllocationFault(point);",
+          "target": "EpidemicGameFrameworkKnowledgeTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:270::epidemic::gameplay::navigation_semantics::internal_test::ArmAllocationFault(point);",
+          "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:465::epidemic::gameplay::ai::internal_test::ArmAllocationFault(",
+          "target": "EpidemicGameFrameworkAITests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:289::epidemic::gameplay::simulation::internal_test::ArmAllocationFault(point);",
+          "target": "EpidemicGameFrameworkSimulationTests"
+        }
+      ],
+      "root_cause": "Owned restore/allocation evidence depended on shared process-global injection helpers.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkPerceptionTests",
+      "targets": [
+        "EpidemicGameFrameworkPerceptionTests",
+        "EpidemicGameFrameworkKnowledgeTests",
+        "EpidemicGameFrameworkNavigationSemanticsTests",
+        "EpidemicGameFrameworkAITests",
+        "EpidemicGameFrameworkSimulationTests"
+      ]
+    },
+    "G4-PER-001": {
+      "fix": "ExactDifference computes sign/magnitude without signed overflow before any floating conversion; FOV uses the exact delta sign and scaled norm.",
+      "fix_symbol": "EngineFramework/GameplayWorldStateOwners/Perception/src/perception.cpp::ExactDifference / ExactNorm / WithinFieldOfView",
+      "logical_id": "G4-PER-001",
+      "module": "EngineFramework/GameplayWorldStateOwners/Perception",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:87::bool TestSpatialBoundaryMath()",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:87::bool TestSpatialBoundaryMath()",
+          "target": "EpidemicGameFrameworkPerceptionTests"
+        }
+      ],
+      "root_cause": "Spatial coordinate subtraction happened after conversion to long double; on MSVC this is binary64 and loses adjacent int64 values above 2^53.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkPerceptionTests",
+      "targets": [
+        "EpidemicGameFrameworkPerceptionTests"
+      ]
+    },
+    "G4-PER-002": {
+      "fix": "Awareness decay uses integer whole-interval arithmetic and exact bounded timestamp advancement.",
+      "fix_symbol": "EngineFramework/GameplayWorldStateOwners/Perception/src/perception.cpp::PerceptionService::AdvanceTime",
+      "logical_id": "G4-PER-002",
+      "module": "EngineFramework/GameplayWorldStateOwners/Perception",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:232::bool TestDecayBoundaryArithmetic()",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:232::bool TestDecayBoundaryArithmetic()",
+          "target": "EpidemicGameFrameworkPerceptionTests"
+        }
+      ],
+      "root_cause": "Decay timestamp advancement converted exact integer steps*interval through long double and could round to INT64_MAX.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkPerceptionTests",
+      "targets": [
+        "EpidemicGameFrameworkPerceptionTests"
+      ]
+    },
+    "G4-PER-003": {
+      "fix": "DistanceMm uses scaled linear norm; range checks use exact portable wide squared comparison so only final linear distance narrows.",
+      "fix_symbol": "EngineFramework/GameplayWorldStateOwners/Perception/src/perception.cpp::DistanceStrictlyWithinRange / DistanceMm",
+      "logical_id": "G4-PER-003",
+      "module": "EngineFramework/GameplayWorldStateOwners/Perception",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:138::const auto above = create_stimulus({3'050'000'000LL, 0, 0});",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:138::const auto above = create_stimulus({3'050'000'000LL, 0, 0});",
+          "target": "EpidemicGameFrameworkPerceptionTests"
+        }
+      ],
+      "root_cause": "Squared distance was saturated into signed 64-bit Fixed before taking sqrt, collapsing large true distances.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkPerceptionTests",
+      "targets": [
+        "EpidemicGameFrameworkPerceptionTests"
+      ]
+    },
+    "G4-SIM-001": {
+      "fix": "Stage TaskCommitted capacity before every external Commit; when the current layer is the last unfinished layer, also preflight the terminal revision, SummaryGenerated journal record and summary storage before Commit. After accepted work, terminal task/interval/region/summary/journal publication uses only no-throw operations.",
+      "fix_symbol": "EngineFramework/GameplayWorldStateOwners/Simulation/src/simulation.cpp::SimulationService::ContinueIntervalExecution",
+      "logical_id": "G4-SIM-001",
+      "module": "EngineFramework/GameplayWorldStateOwners/Simulation",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:312::if (max_result || !max_result.GetError().HasCode(\"gameplay.simulation.revision_exhausted\") ||",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:312::if (max_result || !max_result.GetError().HasCode(\"gameplay.simulation.revision_exhausted\") ||",
+          "target": "EpidemicGameFrameworkSimulationTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:333::if (one_revision_result ||",
+          "target": "EpidemicGameFrameworkSimulationTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:354::if (one_sequence_result ||",
+          "target": "EpidemicGameFrameworkSimulationTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:376::if (summary_preflight_result ||",
+          "target": "EpidemicGameFrameworkSimulationTests"
+        }
+      ],
+      "root_cause": "Executor Commit could succeed before revision/journal capacity for terminal local publication was established.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkSimulationTests",
+      "targets": [
+        "EpidemicGameFrameworkSimulationTests"
+      ]
+    },
+    "G4-SIM-002": {
+      "fix": "Stage interval nodes, summary nodes and journal nodes first; commit generators/revision/primary state with no-throw node insertion/splice.",
+      "fix_symbol": "EngineFramework/GameplayWorldStateOwners/Simulation/src/simulation.cpp::CreateIntervalExecution / ContinueIntervalExecution / StageJournalChange",
+      "logical_id": "G4-SIM-002",
+      "module": "EngineFramework/GameplayWorldStateOwners/Simulation",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:401::!EquivalentMutationState(before, atomic_interval.CaptureSnapshot()) || atomic_exec.commits != 0)",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:401::!EquivalentMutationState(before, atomic_interval.CaptureSnapshot()) || atomic_exec.commits != 0)",
+          "target": "EpidemicGameFrameworkSimulationTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:432::!EquivalentMutationState(before, atomic_summary.CaptureSnapshot()) || summary_a.commits != 0 ||",
+          "target": "EpidemicGameFrameworkSimulationTests"
+        }
+      ],
+      "root_cause": "Interval/summary/revision state could begin committing before fallible container/journal publication.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkSimulationTests",
+      "targets": [
+        "EpidemicGameFrameworkSimulationTests"
+      ]
+    }
+  },
+  "schema_version": 1
+}

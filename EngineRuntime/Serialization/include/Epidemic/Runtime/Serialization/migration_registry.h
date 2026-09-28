@@ -16,6 +16,8 @@ class IMigrationRegistry
     virtual ~IMigrationRegistry() = default;
 
     [[nodiscard]] virtual foundation::Result<void> RegisterMigration(std::shared_ptr<const IMigration> migration) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Freeze() = 0;
+    [[nodiscard]] virtual bool IsFrozen() const noexcept = 0;
     [[nodiscard]] virtual std::shared_ptr<const IMigration> FindMigration(const MigrationKey& key) const = 0;
     [[nodiscard]] virtual bool HasMigration(const MigrationKey& key) const = 0;
     [[nodiscard]] virtual foundation::Result<std::vector<std::shared_ptr<const IMigration>>> FindMigrationPath(

@@ -12,6 +12,8 @@ namespace epidemic::runtime::renderer
 {
 struct RendererOptions
 {
+    // Compatibility option only. CreateRendererServices is always strict and never injects mocks;
+    // reference/mock behavior is available only through CreateMockRendererServices().
     bool enable_mock_dependencies = false;
 };
 

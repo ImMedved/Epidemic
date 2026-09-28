@@ -19,37 +19,46 @@ class KeyboardState
     // Returns whether the key is currently held down.
     [[nodiscard]] bool IsKeyDown(KeyCode key_code) const noexcept
     {
-        return keys_down_[ToIndex(key_code)];
+        return IsKnownKeyCode(key_code) ? keys_down_[ToIndex(key_code)] : false;
     }
 
     // Returns whether the key transitioned to pressed during the current frame.
     [[nodiscard]] bool WasPressedThisFrame(KeyCode key_code) const noexcept
     {
-        return keys_pressed_[ToIndex(key_code)];
+        return IsKnownKeyCode(key_code) ? keys_pressed_[ToIndex(key_code)] : false;
     }
 
     // Returns whether the key transitioned to released during the current frame.
     [[nodiscard]] bool WasReleasedThisFrame(KeyCode key_code) const noexcept
     {
-        return keys_released_[ToIndex(key_code)];
+        return IsKnownKeyCode(key_code) ? keys_released_[ToIndex(key_code)] : false;
     }
 
     // Sets the persistent down/up state for a key.
     void SetKeyDown(KeyCode key_code, bool down) noexcept
     {
-        keys_down_[ToIndex(key_code)] = down;
+        if (IsKnownKeyCode(key_code))
+        {
+            keys_down_[ToIndex(key_code)] = down;
+        }
     }
 
     // Marks a key as newly pressed for the current frame.
     void MarkPressed(KeyCode key_code) noexcept
     {
-        keys_pressed_[ToIndex(key_code)] = true;
+        if (IsKnownKeyCode(key_code))
+        {
+            keys_pressed_[ToIndex(key_code)] = true;
+        }
     }
 
     // Marks a key as newly released for the current frame.
     void MarkReleased(KeyCode key_code) noexcept
     {
-        keys_released_[ToIndex(key_code)] = true;
+        if (IsKnownKeyCode(key_code))
+        {
+            keys_released_[ToIndex(key_code)] = true;
+        }
     }
 
     // Clears only the per-frame pressed/released flags.
@@ -67,7 +76,7 @@ class KeyboardState
     }
 
   private:
-    // Maps a key code to a safe array index, collapsing invalid values to index zero.
+    // Maps a validated key code to its backing-array index.
     [[nodiscard]] static constexpr std::size_t ToIndex(KeyCode key_code) noexcept
     {
         const auto index = static_cast<std::size_t>(static_cast<std::uint16_t>(key_code));

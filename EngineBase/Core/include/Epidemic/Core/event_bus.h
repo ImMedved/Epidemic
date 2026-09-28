@@ -127,6 +127,7 @@ class EventBus final : public IEventBus
     // Copies queued subscribers for an event type and invokes them outside the lock.
     void DispatchQueued(std::type_index event_type, const std::any &event);
 
+    std::mutex drain_mutex_;
     std::mutex mutex_;
     HandlerToken next_token_{1};
     std::unordered_map<std::type_index, std::vector<Subscription>> sync_subscriptions_;

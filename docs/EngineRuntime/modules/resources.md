@@ -16,9 +16,9 @@ Consumer получает `ResourceLease`. Lease имеет собственны
 
 Artifact ID и type должны совпадать с request. Null payload запрещен. Byte budget является soft budget текущего frame: начатая операция может завершить минимальную единицу работы, после чего новые jobs не берутся. Memory accounting использует overflow-safe arithmetic. Internal release failure записывается как invariant violation.
 
-## Стабильность
+## Статус Goal 3
 
-Модуль frozen. Concrete decoders и loaders добавляются сверху без изменения manager API.
+После module-local квалификации блока C и общего serial convergence модуль имеет статус `LOCAL_READY`. Это не означает `SYSTEM_READY` или `FROZEN`; системные и финальные freeze gates остаются в последующих целях. Concrete decoders и loaders добавляются сверху без изменения manager API.
 
 ## Карта публичных заголовков
 

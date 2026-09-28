@@ -10,6 +10,7 @@
 #include <limits>
 #include <memory>
 #include <span>
+#include <stdexcept>
 #include <string_view>
 #include <type_traits>
 #include <vector>
@@ -58,9 +59,16 @@ namespace
 struct TestBackend final : IAudioBackend
 {
     bool enabled = true;
+    bool throw_initialize = false;
     bool fail_create = false;
     bool fail_destroy = false;
+    bool fail_destroy_once = false;
     bool fail_play = false;
+    bool fail_pause = false;
+    bool fail_stop = false;
+    bool fail_gain = false;
+    bool throw_update = false;
+    bool throw_play = false;
     bool fail_spatial = false;
     bool fail_update = false;
     bool fail_destroy_listener_once = false;
@@ -69,9 +77,12 @@ struct TestBackend final : IAudioBackend
     int created = 0;
     int played = 0;
     int stopped = 0;
+    int destroy_attempts = 0;
     int destroyed = 0;
     int spatial_updates = 0;
     int gain_updates = 0;
+    int update_attempts = 0;
+    std::int64_t accepted_update_microseconds = 0;
     int backend_listeners_created = 0;
     int backend_listeners_destroyed = 0;
     int backend_listener_destroy_attempts = 0;
@@ -86,6 +97,10 @@ struct TestBackend final : IAudioBackend
 
     epidemic::foundation::Result<void> Initialize(const AudioBackendOptions& options) override
     {
+        if (throw_initialize)
+        {
+            throw std::runtime_error("test backend initialize exception");
+        }
         enabled = options.enabled;
         return epidemic::foundation::Result<void>::Success();
     }
@@ -110,6 +125,13 @@ struct TestBackend final : IAudioBackend
 
     epidemic::foundation::Result<void> DestroyVoice(BackendVoiceHandle handle) override
     {
+        ++destroy_attempts;
+        if (fail_destroy_once)
+        {
+            fail_destroy_once = false;
+            return epidemic::foundation::Result<void>::Failure(
+                epidemic::foundation::Error::Create("audio.backend_failed", "test backend destroy failed once"));
+        }
         if (fail_destroy)
         {
             return epidemic::foundation::Result<void>::Failure(
@@ -122,6 +144,10 @@ struct TestBackend final : IAudioBackend
 
     epidemic::foundation::Result<void> Play(BackendVoiceHandle) override
     {
+        if (throw_play)
+        {
+            throw std::runtime_error("test backend play exception");
+        }
         if (fail_play)
         {
             return epidemic::foundation::Result<void>::Failure(
@@ -131,10 +157,23 @@ struct TestBackend final : IAudioBackend
         return epidemic::foundation::Result<void>::Success();
     }
 
-    epidemic::foundation::Result<void> Pause(BackendVoiceHandle) override { return epidemic::foundation::Result<void>::Success(); }
+    epidemic::foundation::Result<void> Pause(BackendVoiceHandle) override
+    {
+        if (fail_pause)
+        {
+            return epidemic::foundation::Result<void>::Failure(
+                epidemic::foundation::Error::Create("audio.backend_failed", "test backend pause failed"));
+        }
+        return epidemic::foundation::Result<void>::Success();
+    }
 
     epidemic::foundation::Result<void> Stop(BackendVoiceHandle) override
     {
+        if (fail_stop)
+        {
+            return epidemic::foundation::Result<void>::Failure(
+                epidemic::foundation::Error::Create("audio.backend_failed", "test backend stop failed"));
+        }
         ++stopped;
         return epidemic::foundation::Result<void>::Success();
     }
@@ -146,6 +185,11 @@ struct TestBackend final : IAudioBackend
 
     epidemic::foundation::Result<void> SetGain(BackendVoiceHandle, float gain) override
     {
+        if (fail_gain)
+        {
+            return epidemic::foundation::Result<void>::Failure(
+                epidemic::foundation::Error::Create("audio.backend_failed", "test backend gain failed"));
+        }
         ++gain_updates;
         last_gain = gain;
         return epidemic::foundation::Result<void>::Success();
@@ -193,13 +237,19 @@ struct TestBackend final : IAudioBackend
         return epidemic::foundation::Result<void>::Success();
     }
 
-    epidemic::foundation::Result<void> Update(RuntimeFrameDuration) override
+    epidemic::foundation::Result<void> Update(RuntimeFrameDuration delta) override
     {
+        ++update_attempts;
+        if (throw_update)
+        {
+            throw std::runtime_error("test backend update exception");
+        }
         if (fail_update)
         {
             return epidemic::foundation::Result<void>::Failure(
                 epidemic::foundation::Error::Create("audio.backend_failed", "test backend update failed"));
         }
+        accepted_update_microseconds += delta.value.count();
         return epidemic::foundation::Result<void>::Success();
     }
 };
@@ -239,27 +289,39 @@ struct TestStreamSource final : IAudioStreamSource
 struct TestResourceSource final : IAudioResourceSource
 {
     SoundState state = SoundState::Ready;
+    bool throw_load = false;
+    SoundId returned_sound{};
 
     SoundState GetSoundState(SoundId) const override { return state; }
 
     epidemic::foundation::Result<AudioClipPayload> LoadClip(SoundId id) const override
     {
+        if (throw_load)
+        {
+            throw std::runtime_error("test resource source load exception");
+        }
         if (state == SoundState::Missing)
         {
             return epidemic::foundation::Result<AudioClipPayload>::Failure(
                 epidemic::foundation::Error::Create("audio.sound_not_found", "test sound missing"));
         }
+        const SoundId payload_sound = returned_sound.IsValid() ? returned_sound : id;
         return epidemic::foundation::Result<AudioClipPayload>::Success(
-            AudioClipPayload{id, state, std::make_shared<TestClipResource>()});
+            AudioClipPayload{payload_sound, state, std::make_shared<TestClipResource>()});
     }
 };
 
 struct TestTransformSource final : IAudioTransformSource
 {
     Transform transform{};
+    bool throw_read = false;
 
     epidemic::foundation::Result<Transform> ReadTransform(AudioTransformId id) const override
     {
+        if (throw_read)
+        {
+            throw std::runtime_error("test transform source read exception");
+        }
         if (!id.IsValid())
         {
             return epidemic::foundation::Result<Transform>::Failure(
@@ -734,46 +796,59 @@ bool TestPostShutdownOperationsRejected()
 bool TestAllocatorOverflowDoesNotMutateState()
 {
     AudioRuntime runtime{AudioOptions{.enable_mock_backend = true}};
-    bool ok = Expect(SeedSound(runtime), "allocator overflow test sound should register");
+    bool ok = Expect(SeedSound(runtime), "allocator exhaustion test sound should register");
 
     runtime.SetAllocatorStateForTesting(std::numeric_limits<std::uint64_t>::max(), 1, 1, 1, 1);
+    const auto final_emitter_value = runtime.CreateEmitterHandle(MakeEmitterDesc());
+    ok &= Expect(final_emitter_value.HasValue() &&
+                     final_emitter_value.Value().id == AudioEmitterId{std::numeric_limits<std::uint64_t>::max()},
+                 "emitter allocator should issue the last valid value exactly once");
     const auto emitter_value_overflow = runtime.CreateEmitterHandle(MakeEmitterDesc());
     ok &= Expect(!emitter_value_overflow.HasValue() &&
                      emitter_value_overflow.GetError().HasCode("audio.emitter_id_overflow"),
-                 "emitter value overflow should fail");
-    ok &= Expect(!runtime.GetEmitterState(AudioEmitterHandle{AudioEmitterId{std::numeric_limits<std::uint64_t>::max()}, 1}).HasValue(),
-                 "emitter value overflow should not insert a record");
+                 "emitter value allocator should fail after the last valid value");
 
     runtime.SetAllocatorStateForTesting(1, std::numeric_limits<std::uint32_t>::max(), 1, 1, 1);
+    const auto final_emitter_generation = runtime.CreateEmitterHandle(MakeEmitterDesc());
+    ok &= Expect(final_emitter_generation.HasValue() &&
+                     final_emitter_generation.Value().generation == std::numeric_limits<std::uint32_t>::max(),
+                 "emitter generation allocator should issue the last valid value exactly once");
     const auto emitter_generation_overflow = runtime.CreateEmitterHandle(MakeEmitterDesc());
     ok &= Expect(!emitter_generation_overflow.HasValue() &&
                      emitter_generation_overflow.GetError().HasCode("audio.emitter_id_overflow"),
-                 "emitter generation overflow should fail");
-    ok &= Expect(!runtime.GetEmitterState(AudioEmitterHandle{AudioEmitterId{1}, std::numeric_limits<std::uint32_t>::max()}).HasValue(),
-                 "emitter generation overflow should not insert a record");
+                 "emitter generation allocator should fail after the last valid value");
 
-    runtime.SetAllocatorStateForTesting(1, 1, std::numeric_limits<std::uint64_t>::max(), 1, 1);
+    runtime.SetAllocatorStateForTesting(100, 1, std::numeric_limits<std::uint64_t>::max(), 1, 1);
+    const auto final_listener_value = runtime.CreateListenerHandle(AudioListenerDesc{AudioTransformId{4}});
+    ok &= Expect(final_listener_value.HasValue() &&
+                     final_listener_value.Value().id == AudioListenerId{std::numeric_limits<std::uint64_t>::max()},
+                 "listener allocator should issue the last valid value exactly once");
     const auto listener_value_overflow = runtime.CreateListenerHandle(AudioListenerDesc{AudioTransformId{4}});
     ok &= Expect(!listener_value_overflow.HasValue() &&
                      listener_value_overflow.GetError().HasCode("audio.listener_id_overflow"),
-                 "listener value overflow should fail");
+                 "listener value allocator should fail after the last valid value");
 
-    runtime.SetAllocatorStateForTesting(1, 1, 1, std::numeric_limits<std::uint32_t>::max(), 1);
-    const auto listener_generation_overflow = runtime.CreateListenerHandle(AudioListenerDesc{AudioTransformId{4}});
+    runtime.SetAllocatorStateForTesting(100, 1, 100, std::numeric_limits<std::uint32_t>::max(), 1);
+    const auto final_listener_generation = runtime.CreateListenerHandle(AudioListenerDesc{AudioTransformId{5}});
+    ok &= Expect(final_listener_generation.HasValue() &&
+                     final_listener_generation.Value().generation == std::numeric_limits<std::uint32_t>::max(),
+                 "listener generation allocator should issue the last valid value exactly once");
+    const auto listener_generation_overflow = runtime.CreateListenerHandle(AudioListenerDesc{AudioTransformId{5}});
     ok &= Expect(!listener_generation_overflow.HasValue() &&
                      listener_generation_overflow.GetError().HasCode("audio.listener_id_overflow"),
-                 "listener generation overflow should fail");
+                 "listener generation allocator should fail after the last valid value");
 
-    runtime.SetAllocatorStateForTesting(1, 1, 1, 1, std::numeric_limits<std::uint64_t>::max());
+    runtime.SetAllocatorStateForTesting(100, 1, 100, 1, std::numeric_limits<std::uint64_t>::max());
     AudioVoiceDesc voice_desc{};
     voice_desc.clip = AudioClipPayload{SoundId{1}, SoundState::Ready, std::make_shared<TestClipResource>()};
     voice_desc.initial_gain = 0.5f;
+    const auto final_voice = runtime.CreateVoice(voice_desc);
+    ok &= Expect(final_voice.HasValue() && final_voice.Value().value == std::numeric_limits<std::uint64_t>::max(),
+                 "voice allocator should issue the last valid value exactly once");
     const auto voice_overflow = runtime.CreateVoice(voice_desc);
     ok &= Expect(!voice_overflow.HasValue() &&
                      voice_overflow.GetError().HasCode("audio.voice_id_overflow"),
-                 "voice overflow should fail before inserting mock voice");
-    ok &= Expect(!runtime.Play(BackendVoiceHandle{std::numeric_limits<std::uint64_t>::max()}).HasValue(),
-                 "voice overflow should not insert a backend voice");
+                 "voice allocator should fail after the last valid value");
     return ok;
 }
 
@@ -794,6 +869,397 @@ bool TestMainListenerSelectionIsAtomic()
                  "failed SetMainListener should keep previous main listener");
     return ok;
 }
+
+bool SameMixerGroup(const std::optional<MixerGroupState>& left, const std::optional<MixerGroupState>& right)
+{
+    if (left.has_value() != right.has_value())
+    {
+        return false;
+    }
+    if (!left.has_value())
+    {
+        return true;
+    }
+    return left->id == right->id && left->volume == right->volume && left->fade_state == right->fade_state &&
+           left->parent == right->parent && left->fade_duration == right->fade_duration && left->fade_progress == right->fade_progress;
+}
+
+bool SameEmitterSnapshot(const epidemic::runtime::audio::AudioEmitterSnapshot& left,
+                         const epidemic::runtime::audio::AudioEmitterSnapshot& right)
+{
+    return left.id == right.id && left.handle == right.handle && left.sound == right.sound && left.transform == right.transform &&
+           left.state == right.state && left.fade_duration == right.fade_duration && left.fade_progress == right.fade_progress &&
+           left.revision == right.revision;
+}
+
+bool TestPlayAndFadeFailuresAreAtomic()
+{
+    auto backend = std::make_shared<TestBackend>();
+    auto resources = std::make_shared<TestResourceSource>();
+    auto transforms = std::make_shared<TestTransformSource>();
+    AudioRuntime runtime{AudioOptions{.enable_mock_backend = false}, AudioDependencies{backend, resources, transforms}};
+    const auto emitter = runtime.CreateEmitterHandle(MakeEmitterDesc());
+    if (!emitter)
+    {
+        return false;
+    }
+    const auto before_play = runtime.GetEmitterSnapshot(emitter.Value());
+    backend->fail_gain = true;
+    const auto failed_play = runtime.Play(emitter.Value());
+    const auto after_play = runtime.GetEmitterSnapshot(emitter.Value());
+    bool ok = Expect(!failed_play && before_play && after_play && SameEmitterSnapshot(before_play.Value(), after_play.Value()),
+                     "failed Play must leave emitter snapshot unchanged");
+    backend->fail_gain = false;
+    backend->throw_play = true;
+    const auto before_throw = runtime.GetEmitterSnapshot(emitter.Value());
+    const auto thrown_play = runtime.Play(emitter.Value());
+    const auto after_throw = runtime.GetEmitterSnapshot(emitter.Value());
+    ok &= Expect(!thrown_play && thrown_play.GetError().HasCode("audio.backend_exception") && before_throw && after_throw &&
+                     SameEmitterSnapshot(before_throw.Value(), after_throw.Value()),
+                 "throwing backend Play must be contained and atomic");
+    backend->throw_play = false;
+    ok &= Expect(runtime.Play(emitter.Value()).HasValue(), "emitter should play after retry");
+
+    backend->fail_gain = true;
+    const auto before_fade = runtime.GetEmitterSnapshot(emitter.Value());
+    const auto failed_fade = runtime.FadeOut(emitter.Value(), RuntimeFrameDuration{std::chrono::microseconds{10}});
+    const auto after_fade = runtime.GetEmitterSnapshot(emitter.Value());
+    ok &= Expect(!failed_fade && before_fade && after_fade && SameEmitterSnapshot(before_fade.Value(), after_fade.Value()),
+                 "failed FadeOut must leave emitter snapshot unchanged");
+    backend->fail_gain = false;
+    backend->fail_stop = true;
+    const auto before_zero = runtime.GetEmitterSnapshot(emitter.Value());
+    const auto failed_zero = runtime.FadeOut(emitter.Value(), RuntimeFrameDuration{});
+    const auto after_zero = runtime.GetEmitterSnapshot(emitter.Value());
+    ok &= Expect(!failed_zero && before_zero && after_zero && SameEmitterSnapshot(before_zero.Value(), after_zero.Value()),
+                 "failed zero-duration FadeOut must leave emitter snapshot unchanged");
+    return ok;
+}
+
+bool TestTickFailureDoesNotAdvanceLocalState()
+{
+    auto backend = std::make_shared<TestBackend>();
+    auto resources = std::make_shared<TestResourceSource>();
+    auto transforms = std::make_shared<TestTransformSource>();
+    AudioRuntime runtime{AudioOptions{.enable_mock_backend = false}, AudioDependencies{backend, resources, transforms}};
+    const auto emitter = runtime.CreateEmitterHandle(MakeEmitterDesc());
+    if (!emitter || !runtime.Play(emitter.Value()) ||
+        !runtime.FadeOut(emitter.Value(), RuntimeFrameDuration{std::chrono::microseconds{10}}))
+    {
+        return false;
+    }
+    const auto before = runtime.GetEmitterSnapshot(emitter.Value());
+    backend->fail_update = true;
+    const auto failed = runtime.Tick(RuntimeFrameDuration{std::chrono::microseconds{4}});
+    const auto after = runtime.GetEmitterSnapshot(emitter.Value());
+    bool ok = Expect(!failed && before && after && SameEmitterSnapshot(before.Value(), after.Value()),
+                     "failed Tick must not advance emitter fade state");
+    backend->fail_update = false;
+    const auto retry = runtime.Tick(RuntimeFrameDuration{std::chrono::microseconds{4}});
+    const auto retried = runtime.GetEmitterSnapshot(emitter.Value());
+    ok &= Expect(retry && retried && retried.Value().fade_progress > 0.39f && retried.Value().fade_progress < 0.41f,
+                 "Tick retry should advance the delta exactly once");
+
+    backend->throw_update = true;
+    const auto before_throw = runtime.GetEmitterSnapshot(emitter.Value());
+    const auto thrown = runtime.Tick(RuntimeFrameDuration{std::chrono::microseconds{1}});
+    const auto after_throw = runtime.GetEmitterSnapshot(emitter.Value());
+    ok &= Expect(!thrown && thrown.GetError().HasCode("audio.backend_exception") && before_throw && after_throw &&
+                     SameEmitterSnapshot(before_throw.Value(), after_throw.Value()),
+                 "throwing backend Update must not advance local tick state");
+    return ok;
+}
+
+bool TestAudioNumericEnumAndRevisionContracts()
+{
+    AudioRuntime runtime{AudioOptions{.enable_mock_backend = true, .max_queued_events = 1}};
+    bool ok = Expect(SeedSound(runtime), "audio contract sound should seed");
+    const auto before_events = runtime.Events().size();
+    AudioEvent invalid_space{SoundId{1}, Vec3{}, 1.0f, static_cast<epidemic::runtime::audio::AudioEventSpace>(255)};
+    ok &= Expect(!runtime.SubmitOneShot(invalid_space) && runtime.Events().size() == before_events,
+                 "invalid event space must fail without queue mutation");
+    AudioEvent invalid_position{SoundId{1}, Vec3{std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f}, 1.0f,
+                                epidemic::runtime::audio::AudioEventSpace::WorldPosition};
+    ok &= Expect(!runtime.SubmitOneShot(invalid_position) && runtime.Events().size() == before_events,
+                 "non-finite one-shot position must fail without queue mutation");
+
+    const MixerGroupState valid_group{MixerGroupId{1}, 0.5f, MixerFadeState::Stable, {}, RuntimeFrameDuration{}, 0.0f};
+    ok &= Expect(runtime.SetMixerGroup(valid_group).HasValue(), "valid mixer group should be accepted");
+    const auto group_before = runtime.GetMixerGroup(MixerGroupId{1});
+    MixerGroupState invalid_group = valid_group;
+    invalid_group.fade_state = static_cast<MixerFadeState>(255);
+    ok &= Expect(!runtime.SetMixerGroup(invalid_group) && SameMixerGroup(runtime.GetMixerGroup(MixerGroupId{1}), group_before),
+                 "invalid mixer enum must fail atomically");
+    invalid_group = valid_group;
+    invalid_group.fade_progress = std::numeric_limits<float>::infinity();
+    ok &= Expect(!runtime.SetMixerGroup(invalid_group) && SameMixerGroup(runtime.GetMixerGroup(MixerGroupId{1}), group_before),
+                 "non-finite mixer progress must fail atomically");
+    invalid_group = valid_group;
+    invalid_group.fade_duration = RuntimeFrameDuration{std::chrono::microseconds{-1}};
+    ok &= Expect(!runtime.SetMixerGroup(invalid_group) && SameMixerGroup(runtime.GetMixerGroup(MixerGroupId{1}), group_before),
+                 "negative mixer fade duration must fail atomically");
+
+    AudioVoiceDesc voice_desc{};
+    voice_desc.clip = AudioClipPayload{SoundId{1}, SoundState::Ready, std::make_shared<TestClipResource>()};
+    const auto voice = runtime.CreateVoice(voice_desc);
+    ok &= Expect(voice.HasValue(), "mock voice should create for backend setter contract");
+    if (voice)
+    {
+        ok &= Expect(!runtime.SetGain(voice.Value(), std::numeric_limits<float>::quiet_NaN()),
+                     "backend SetGain must reject NaN");
+        AudioSpatialState bad_spatial{};
+        bad_spatial.transform.position.x = std::numeric_limits<float>::infinity();
+        ok &= Expect(!runtime.SetSpatialState(voice.Value(), bad_spatial), "backend spatial setter must reject infinity");
+    }
+
+    const auto emitter = runtime.CreateEmitterHandle(MakeEmitterDesc());
+    ok &= Expect(emitter.HasValue() && runtime.Play(emitter.Value()).HasValue(), "revision test emitter should play");
+    if (emitter)
+    {
+        ok &= Expect(runtime.SetEmitterRevisionForTesting(emitter.Value(), std::numeric_limits<std::uint64_t>::max()).HasValue(),
+                     "revision seam should set max revision");
+        const auto before_stop = runtime.GetEmitterSnapshot(emitter.Value());
+        const auto exhausted = runtime.Stop(emitter.Value());
+        const auto after_stop = runtime.GetEmitterSnapshot(emitter.Value());
+        ok &= Expect(!exhausted && exhausted.GetError().HasCode("audio.revision_overflow") && before_stop && after_stop &&
+                         SameEmitterSnapshot(before_stop.Value(), after_stop.Value()),
+                     "revision exhaustion must reject mutation without wraparound");
+    }
+
+    AudioRuntime invalid_policy{AudioOptions{.enable_mock_backend = true,
+                                             .max_queued_events = 1,
+                                             .event_overflow_policy = static_cast<AudioEventOverflowPolicy>(255)}};
+    ok &= Expect(SeedSound(invalid_policy), "invalid-policy runtime sound should seed");
+    ok &= Expect(!invalid_policy.SubmitOneShot(AudioEvent{SoundId{1}, Vec3{}, 1.0f,
+                                                           epidemic::runtime::audio::AudioEventSpace::WorldPosition}) &&
+                     invalid_policy.Events().empty(),
+                 "invalid overflow policy must fail without queue mutation");
+    return ok;
+}
+
+
+
+
+bool TestResourceAndTransformBoundaryValidation()
+{
+    auto backend = std::make_shared<TestBackend>();
+    auto resources = std::make_shared<TestResourceSource>();
+    auto transforms = std::make_shared<TestTransformSource>();
+    AudioRuntime runtime{AudioOptions{.enable_mock_backend = false}, AudioDependencies{backend, resources, transforms}};
+    const auto emitter = runtime.CreateEmitterHandle(MakeEmitterDesc());
+    if (!emitter)
+    {
+        return false;
+    }
+    const auto initial = runtime.GetEmitterSnapshot(emitter.Value());
+
+    resources->throw_load = true;
+    const auto thrown_resource = runtime.Play(emitter.Value());
+    const auto after_resource = runtime.GetEmitterSnapshot(emitter.Value());
+    bool ok = Expect(!thrown_resource && thrown_resource.GetError().HasCode("audio.resource_source_exception") &&
+                         initial && after_resource && SameEmitterSnapshot(initial.Value(), after_resource.Value()) && backend->created == 0,
+                     "resource source exception must be contained before backend acquisition");
+    resources->throw_load = false;
+
+    resources->returned_sound = SoundId{99};
+    const auto mismatched = runtime.Play(emitter.Value());
+    const auto after_mismatch = runtime.GetEmitterSnapshot(emitter.Value());
+    ok &= Expect(!mismatched && mismatched.GetError().HasCode("audio.clip_sound_mismatch") &&
+                     initial && after_mismatch && SameEmitterSnapshot(initial.Value(), after_mismatch.Value()) && backend->created == 0,
+                 "resource payload for another SoundId must be rejected before backend acquisition");
+    resources->returned_sound = {};
+
+    transforms->throw_read = true;
+    const auto thrown_transform = runtime.Play(emitter.Value());
+    const auto after_transform = runtime.GetEmitterSnapshot(emitter.Value());
+    ok &= Expect(!thrown_transform && thrown_transform.GetError().HasCode("audio.transform_source_exception") &&
+                     initial && after_transform && SameEmitterSnapshot(initial.Value(), after_transform.Value()) && backend->created == 0,
+                 "transform source exception must be contained before backend acquisition");
+    return ok;
+}
+
+bool TestFactoryContainsBackendInitializeException()
+{
+    auto backend = std::make_shared<TestBackend>();
+    backend->throw_initialize = true;
+    bool escaped = false;
+    epidemic::foundation::Result<epidemic::runtime::audio::AudioServices> services =
+        epidemic::foundation::Result<epidemic::runtime::audio::AudioServices>::Failure(
+            epidemic::foundation::Error::Create("test.unset", "unset"));
+    try
+    {
+        services = CreateAudioServices(AudioOptions{.enable_mock_backend = false}, AudioDependencies{backend, {}, {}});
+    }
+    catch (...)
+    {
+        escaped = true;
+    }
+    return Expect(!escaped && !services && services.GetError().HasCode("audio.backend_exception"),
+                  "backend Initialize exception must be contained by CreateAudioServices");
+}
+
+bool TestBackendRetryContractDoesNotDoubleAdvanceTime()
+{
+    auto backend = std::make_shared<TestBackend>();
+    auto resources = std::make_shared<TestResourceSource>();
+    auto transforms = std::make_shared<TestTransformSource>();
+    AudioRuntime runtime{AudioOptions{.enable_mock_backend = false}, AudioDependencies{backend, resources, transforms}};
+    const auto emitter = runtime.CreateEmitterHandle(MakeEmitterDesc());
+    if (!emitter || !runtime.Play(emitter.Value()) ||
+        !runtime.FadeOut(emitter.Value(), RuntimeFrameDuration{std::chrono::microseconds{10}}))
+    {
+        return false;
+    }
+
+    const auto before = runtime.GetEmitterSnapshot(emitter.Value());
+    backend->fail_update = true;
+    const auto failed_update = runtime.Tick(RuntimeFrameDuration{std::chrono::microseconds{4}});
+    const auto after_failed_update = runtime.GetEmitterSnapshot(emitter.Value());
+    bool ok = Expect(!failed_update && before && after_failed_update &&
+                         SameEmitterSnapshot(before.Value(), after_failed_update.Value()),
+                     "failed backend Update must preserve local state");
+    ok &= Expect(backend->accepted_update_microseconds == 0,
+                 "failed backend Update must not accept temporal delta");
+
+    backend->fail_update = false;
+    const auto retry = runtime.Tick(RuntimeFrameDuration{std::chrono::microseconds{4}});
+    ok &= Expect(retry && backend->accepted_update_microseconds == 4,
+                 "retrying the same delta after failed Update must advance backend time exactly once");
+
+    const auto pause_before = runtime.GetEmitterSnapshot(emitter.Value());
+    backend->fail_pause = true;
+    const auto failed_pause = runtime.Pause(emitter.Value());
+    const auto pause_after = runtime.GetEmitterSnapshot(emitter.Value());
+    ok &= Expect(!failed_pause && pause_before && pause_after &&
+                     SameEmitterSnapshot(pause_before.Value(), pause_after.Value()),
+                 "failed idempotent backend pause projection must not commit local pause state");
+    backend->fail_pause = false;
+    ok &= Expect(runtime.Pause(emitter.Value()).HasValue(), "pause retry should succeed");
+    ok &= Expect(runtime.Resume(emitter.Value()).HasValue(), "resume after retry should succeed");
+
+    backend->fail_stop = true;
+    const auto stop_before = runtime.GetEmitterSnapshot(emitter.Value());
+    const auto failed_stop = runtime.Stop(emitter.Value());
+    const auto stop_after = runtime.GetEmitterSnapshot(emitter.Value());
+    ok &= Expect(!failed_stop && stop_before && stop_after && SameEmitterSnapshot(stop_before.Value(), stop_after.Value()),
+                 "failed backend stop projection must not commit local stop state");
+    backend->fail_stop = false;
+    ok &= Expect(runtime.Stop(emitter.Value()).HasValue(), "stop retry should succeed");
+    return ok;
+}
+
+bool TestVoiceCleanupPreflightPrecedesCreateVoice()
+{
+    auto backend = std::make_shared<TestBackend>();
+    auto resources = std::make_shared<TestResourceSource>();
+    auto transforms = std::make_shared<TestTransformSource>();
+    AudioRuntime runtime{AudioOptions{.enable_mock_backend = false}, AudioDependencies{backend, resources, transforms}};
+    const auto emitter = runtime.CreateEmitterHandle(MakeEmitterDesc());
+    if (!emitter)
+    {
+        return false;
+    }
+
+    runtime.FailNextVoiceCleanupPreflightForTesting();
+    const int created_before = backend->created;
+    const auto preflight_failed = runtime.Play(emitter.Value());
+    bool ok = Expect(!preflight_failed && preflight_failed.GetError().HasCode("audio.allocation_failed"),
+                     "cleanup-capacity preflight failure should be surfaced before voice acquisition");
+    ok &= Expect(backend->created == created_before && runtime.PendingVoiceCleanupCountForTesting() == 0,
+                 "failed cleanup preflight must not call CreateVoice or publish cleanup ownership");
+    ok &= Expect(runtime.GetEmitterState(emitter.Value()).Value() == EmitterState::Stopped,
+                 "failed cleanup preflight must preserve emitter state");
+
+    backend->fail_gain = true;
+    backend->fail_destroy = true;
+    const auto failed_after_create = runtime.Play(emitter.Value());
+    ok &= Expect(!failed_after_create && backend->created == created_before + 1,
+                 "post-create backend failure should exercise rollback path");
+    ok &= Expect(runtime.PendingVoiceCleanupCountForTesting() == 1,
+                 "failed rollback after successful CreateVoice must retain durable cleanup ownership");
+
+    backend->fail_gain = false;
+    backend->fail_destroy = false;
+    const int destroyed_before = backend->destroyed;
+    ok &= Expect(runtime.Tick(RuntimeFrameDuration{}).HasValue(), "tick should retry pending voice cleanup");
+    ok &= Expect(runtime.PendingVoiceCleanupCountForTesting() == 0 && backend->destroyed == destroyed_before + 1,
+                 "pending voice cleanup should destroy the acquired voice exactly once");
+    return ok;
+}
+
+bool TestOneShotCleanupCapacityPreflightIsBatchAtomic()
+{
+    auto backend = std::make_shared<TestBackend>();
+    auto resources = std::make_shared<TestResourceSource>();
+    auto transforms = std::make_shared<TestTransformSource>();
+    AudioRuntime runtime{AudioOptions{.enable_mock_backend = false, .max_queued_events = 4},
+                         AudioDependencies{backend, resources, transforms}};
+    bool ok = Expect(runtime.SubmitOneShot(AudioEvent{SoundId{1}, Vec3{1.0f, 2.0f, 3.0f}, 0.5f}).HasValue(),
+                     "first one-shot should queue");
+    ok &= Expect(runtime.SubmitOneShot(AudioEvent{SoundId{1}, Vec3{4.0f, 5.0f, 6.0f}, 0.25f}).HasValue(),
+                 "second one-shot should queue");
+    runtime.FailNextVoiceCleanupPreflightForTesting();
+    const int created_before = backend->created;
+    const auto failed = runtime.Tick(RuntimeFrameDuration{std::chrono::microseconds{1}});
+    ok &= Expect(!failed && failed.GetError().HasCode("audio.allocation_failed"),
+                 "one-shot cleanup preflight allocation failure should fail Tick before acquisition");
+    ok &= Expect(backend->created == created_before && runtime.Events().size() == 2,
+                 "batch cleanup preflight must occur before the first one-shot CreateVoice and retain queued events");
+    return ok;
+}
+
+
+bool TestVoiceShutdownIsBestEffortAndRetryable()
+{
+    auto backend = std::make_shared<TestBackend>();
+    auto resources = std::make_shared<TestResourceSource>();
+    auto transforms = std::make_shared<TestTransformSource>();
+    AudioRuntime runtime{AudioOptions{.enable_mock_backend = false}, AudioDependencies{backend, resources, transforms}};
+    const auto first = runtime.CreateEmitterHandle(MakeEmitterDesc());
+    const auto second = runtime.CreateEmitterHandle(MakeEmitterDesc());
+    if (!first || !second || !runtime.Play(first.Value()) || !runtime.Play(second.Value()))
+    {
+        return false;
+    }
+
+    backend->fail_destroy_once = true;
+    const int attempts_before = backend->destroy_attempts;
+    const auto failed = runtime.Shutdown();
+    bool ok = Expect(!failed && failed.GetError().HasCode("audio.backend_failed"),
+                     "one failed voice destroy should make shutdown retryable");
+    ok &= Expect(backend->destroy_attempts == attempts_before + 2 && backend->destroyed == 1,
+                 "shutdown must continue independent voice cleanup after the first destroy failure");
+
+    const int attempts_after_failure = backend->destroy_attempts;
+    const auto retried = runtime.Shutdown();
+    ok &= Expect(retried && backend->destroy_attempts == attempts_after_failure + 1 && backend->destroyed == 2,
+                 "shutdown retry must destroy only the previously failed voice");
+    ok &= Expect(runtime.Shutdown().HasValue() && backend->destroy_attempts == attempts_after_failure + 1,
+                 "completed shutdown must be idempotent and not redestroy voices");
+    return ok;
+}
+
+bool TestListenerPublicationRollbackRetainsCleanupOwnership()
+{
+    auto backend = std::make_shared<TestBackend>();
+    AudioRuntime runtime{AudioOptions{.enable_mock_backend = false}, AudioDependencies{backend, {}, {}}};
+    runtime.FailNextListenerPublicationForTesting();
+    backend->fail_destroy_listener_once = true;
+
+    const auto created = runtime.CreateListenerHandle(AudioListenerDesc{RuntimeObjectId{700}});
+    bool ok = Expect(!created && created.GetError().HasCode("audio.allocation_failed"),
+                     "listener publication failure should be reported");
+    ok &= Expect(backend->backend_listeners_created == 1 && backend->backend_listener_destroy_attempts == 1 &&
+                     backend->backend_listeners_destroyed == 0 && runtime.PendingListenerCleanupCountForTesting() == 1,
+                 "failed listener rollback must retain backend ownership for retry");
+
+    const auto shutdown = runtime.Shutdown();
+    ok &= Expect(shutdown && backend->backend_listener_destroy_attempts == 2 &&
+                     backend->backend_listeners_destroyed == 1 && runtime.PendingListenerCleanupCountForTesting() == 0,
+                 "shutdown should retry and complete pending listener cleanup");
+    return ok;
+}
+
 } // namespace
 
 int main()
@@ -820,5 +1286,15 @@ int main()
     ok &= TestPostShutdownOperationsRejected();
     ok &= TestAllocatorOverflowDoesNotMutateState();
     ok &= TestMainListenerSelectionIsAtomic();
+    ok &= TestPlayAndFadeFailuresAreAtomic();
+    ok &= TestTickFailureDoesNotAdvanceLocalState();
+    ok &= TestAudioNumericEnumAndRevisionContracts();
+    ok &= TestResourceAndTransformBoundaryValidation();
+    ok &= TestFactoryContainsBackendInitializeException();
+    ok &= TestBackendRetryContractDoesNotDoubleAdvanceTime();
+    ok &= TestVoiceCleanupPreflightPrecedesCreateVoice();
+    ok &= TestOneShotCleanupCapacityPreflightIsBatchAtomic();
+    ok &= TestVoiceShutdownIsBestEffortAndRetryable();
+    ok &= TestListenerPublicationRollbackRetainsCleanupOwnership();
     return ok ? 0 : 1;
 }

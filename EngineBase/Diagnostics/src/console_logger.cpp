@@ -71,13 +71,17 @@ void ConsoleLogger::EnsureLogFileInitialized()
 }
 
 // Formats one log line, writes it to stdout, and mirrors it to the persistent log file when available.
-void ConsoleLogger::Log(const LogMessage &message)
+void ConsoleLogger::Write(const LogMessage &message)
 {
     const auto time = std::chrono::system_clock::to_time_t(message.timestamp);
     const auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(message.timestamp.time_since_epoch()) % 1000;
 
     std::tm local_time{};
-    localtime_s(&local_time, &time);
+#if defined(_WIN32)
+    static_cast<void>(localtime_s(&local_time, &time));
+#else
+    static_cast<void>(localtime_r(&time, &local_time));
+#endif
 
     std::ostringstream thread_stream;
     thread_stream << message.thread_id;

@@ -15,6 +15,9 @@ target_link_libraries(EpidemicRHI_D3D11
     PRIVATE EpidemicPlatform d3d11 dxgi
 )
 
-target_compile_features(EpidemicRHI_D3D11 PUBLIC cxx_std_20)
+target_compile_features(EpidemicRHI_D3D11 PUBLIC cxx_std_23)
 
 epidemic_configure_target(EpidemicRHI_D3D11)
+if(BUILD_TESTING)
+    target_compile_definitions(EpidemicRHI_D3D11 PRIVATE EPIDEMIC_RHI_D3D11_ENABLE_TEST_HOOKS=1)
+endif()

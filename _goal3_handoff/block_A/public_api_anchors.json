@@ -1,0 +1,2903 @@
+{
+  "anchors": {
+    "0076cd6ccdcbfb0f": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:204::TestStateTransitionsAndEvents",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:207::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "00bb4093f9e63f03": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:92::TestRuntimeBudgetDefaultsToUnlimited",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:95::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "01695359aa3b1edf": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "0393e65d5678b8f6": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "054ba73dc706153e": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:242::TestLodPlaceholderChangesPoseState",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:249::GetPoseState"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "089fefbd854e19bc": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/time.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:61::TestInitialSnapshotIsStable",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:66::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "0901d835aa00f87c": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:261::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "0c6fcb520bcc4f24": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "0ea009ee5e475e84": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:171::TestSurfaceStateStoresRegionAndMixedConditions",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:177::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "0f27a54ce191d70c": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "1022cfd1860ddd78": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/runtime_foundation.md:7::## \u041f\u0443\u0431\u043b\u0438\u0447\u043d\u0430\u044f \u043c\u043e\u0434\u0435\u043b\u044c",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:621::TestExplicitStateHelpers",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:632::CanPromotePersistenceTier"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "106d8f111177cabe": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:261::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "10b23bf99456053d": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "1575dccce0e5d27d": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "1778ba6148315684": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_time_audit.md:23::## State, revision and no-op semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:135::TestPauseResume",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:144::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "19bc3d431c8447e3": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:278::IsFrozen"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "1bf74ea552332344": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "1d4dd2c144035b9e": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "1d7cfe65684fefd7": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/runtime_foundation.md:7::## \u041f\u0443\u0431\u043b\u0438\u0447\u043d\u0430\u044f \u043c\u043e\u0434\u0435\u043b\u044c",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:636::TestObjectRealityHelpersAreExplicit",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:644::CanPromoteReality"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "1e2c158af658840b": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:52::TestCheckedMonotonicIdAllocatorExhaustion",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:58::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "1ea76ef2c3811f25": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:245::TestSnapshotAndProjectionAreRevisionedCopies",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:252::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "1f32f7bc997380dc": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:308::TestMonotonicIdHelperBoundariesAndNoOpCommit",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:314::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "1fd113eb682402b0": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_time_audit.md:23::## State, revision and no-op semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:135::TestPauseResume",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:144::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "206f283bdce696be": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "218ca7e770972b48": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:308::TestMonotonicIdHelperBoundariesAndNoOpCommit",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:317::ReserveMonotonicId"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "2311f532f78ab1fd": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:96::TestUnknownRegionAndSurfaceFail",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:102::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "240763bf26ba0896": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "272441e9b6ca64a9": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "283a8d9d6b251588": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:181::TestCreateDestroyAnimator",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:189::GetAnimatorSnapshot"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "28abf617082befab": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "294b3cb29dcf615f": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:269::TestUpdateWithoutPolicyDoesNotMutateSurface",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:275::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "2a2fd24f595d84e4": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "2e192dc803473ea7": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:140::TestNoOpSettersDoNotBumpRevision",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:146::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "2f1abe82fc360cda": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/time.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:61::TestInitialSnapshotIsStable",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:66::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "2f76621e2a07988a": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_time_audit.md:17::## Configuration and boundary audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:421::TestFactoryCreatesSplitServices",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:426::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "30439685ceaab0c7": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "3144cb10ea577c9f": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "32db1528811e2cdf": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "348e292b14a8396c": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "35ee18af06f53cbb": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:181::TestCreateDestroyAnimator",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:184::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "3625a5e606759c89": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/runtime_foundation.md:7::## \u041f\u0443\u0431\u043b\u0438\u0447\u043d\u0430\u044f \u043c\u043e\u0434\u0435\u043b\u044c",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:636::TestObjectRealityHelpersAreExplicit",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:646::CanDemoteReality"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "388adb1f4abcb2bf": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:92::TestRuntimeBudgetDefaultsToUnlimited",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:95::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "38d562037c6975b0": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "3977bf5427ceb3f4": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "39d606a976bee090": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:99::TestRuntimeBudgetTracksLimits",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:103::HasByteBudget"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "3a2c66d82e7e5450": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "3f48d710b1bede61": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:737::TestFiniteNumericValidationIsTransactional",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:744::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "3f6bccf7063b0fd2": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/time.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:61::TestInitialSnapshotIsStable",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:66::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "3f7128e1f0649283": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:426::TestFactoryCreatesSplitServices",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:432::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "3f7ca0f95722e1ff": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/runtime_foundation.md:7::## \u041f\u0443\u0431\u043b\u0438\u0447\u043d\u0430\u044f \u043c\u043e\u0434\u0435\u043b\u044c",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:608::TestOperationHelpers",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:604::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "42e317167cd149f5": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "43b0e1ebf4b6d97a": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:137::TestCheckedArithmeticBoundaries",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:146::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "4415beba356c5dde": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:106::TestSetGetWeatherSeasonClimateByRegion",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:112::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "4451519acb4c7ba9": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "44e7f1b8dbe29b4a": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:529::TestFactoryProfilesSeparateMockEvaluation",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:521::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "471b1aabd6014b53": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:529::TestFactoryProfilesSeparateMockEvaluation",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:521::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "47f023aa607d1c87": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/runtime_foundation.md:7::## \u041f\u0443\u0431\u043b\u0438\u0447\u043d\u0430\u044f \u043c\u043e\u0434\u0435\u043b\u044c",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:636::TestObjectRealityHelpersAreExplicit",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:642::IsMoreConcreteRealityLevel"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "47f676c83c41f88f": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:442::TestResourceSourceFailureAndPoseSinkPublication",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:434::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "4a2f5fd4a7c6fb35": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:106::TestRuntimeBudgetRejectsNegativeTime",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:110::ValidateRuntimeBudget"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "4c931ffe03fd693b": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:880::TestPolicyResultAndInvalidOutputFailuresPreserveState",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:886::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "4cbfa7817be71e85": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:555::TestFreezeRejectsNewSurfacesButAllowsExistingUpdates",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:563::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "4cc5348839b9d403": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:323::TestHandlePlaybackPoseBufferAndFactory",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:308::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "4d43373cea68de74": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "4d73e0dbf501de6d": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "502272439281bce8": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "527cfa1e27c9b3b6": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "534406e69002a577": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:261::=="
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "53dce817f487e3c7": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "544081477908543d": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:442::TestResourceSourceFailureAndPoseSinkPublication",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:434::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "56610d19bcb5398a": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/runtime_foundation.md:7::## \u041f\u0443\u0431\u043b\u0438\u0447\u043d\u0430\u044f \u043c\u043e\u0434\u0435\u043b\u044c",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:621::TestExplicitStateHelpers",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:623::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "56643a42124addf1": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/runtime_foundation.md:7::## \u041f\u0443\u0431\u043b\u0438\u0447\u043d\u0430\u044f \u043c\u043e\u0434\u0435\u043b\u044c",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:621::TestExplicitStateHelpers",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:623::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "57cb803bdf3aacdc": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:442::TestResourceSourceFailureAndPoseSinkPublication",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:434::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "58682d9c151c975a": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:137::TestCheckedArithmeticBoundaries",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:146::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "5875f4b3ba233a62": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "59a9384e35791cf9": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "5bb0602e38c2a152": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "5c24c0044cbac7f6": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:245::TestSnapshotAndProjectionAreRevisionedCopies",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:252::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "610bf1ee6e7185fd": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "616ce4d6019ff90c": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "6253963febffc905": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_time_audit.md:7::## Reviewed state and ownership",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:61::TestInitialSnapshotIsStable",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:66::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "63b8bc1438ea6fff": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/runtime_foundation.md:7::## \u041f\u0443\u0431\u043b\u0438\u0447\u043d\u0430\u044f \u043c\u043e\u0434\u0435\u043b\u044c",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:621::TestExplicitStateHelpers",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:623::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "63ce4f6cda3322b1": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:261::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "63e923908066648a": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:445::TestCheckedScaleDurationBoundaries",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:449::CheckedScaleDuration"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "641b55878c9d5945": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "6621c9b1e9a0574d": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:204::TestStateTransitionsAndEvents",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:207::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "66459b632659dbad": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "68069c4957dcb16e": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:137::TestCheckedArithmeticBoundaries",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:146::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "683e89ccea644a34": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:442::TestResourceSourceFailureAndPoseSinkPublication",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:434::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "6b567e15eae8fb89": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "6bbefae1fdbcafb0": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:140::TestNoOpSettersDoNotBumpRevision",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:146::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "6c6109216dd4960b": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:52::TestCheckedMonotonicIdAllocatorExhaustion",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:58::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "6feaabe416057929": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "715d1cf1c3bdeafc": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:245::TestSnapshotAndProjectionAreRevisionedCopies",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:252::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "71eb462e6acb5c23": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/time.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:61::TestInitialSnapshotIsStable",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:66::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "7683b6d28ebe0e6a": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_time_audit.md:7::## Reviewed state and ownership",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:61::TestInitialSnapshotIsStable",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:66::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "779df2b857aeb232": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:501::TestEnvironmentEnumRevisionAllocationAndFreezeContracts",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:507::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "77a25adb6ea72e91": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:308::TestMonotonicIdHelperBoundariesAndNoOpCommit",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:344::CommitMonotonicId"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "78b63ad1bb5a26b4": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "7a53eeccf8acf51d": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:92::TestRuntimeBudgetDefaultsToUnlimited",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:95::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "7ced0f5b9575b179": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:189::TestSurfaceRegionOwnershipIsImmutable",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:197::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "7d3ba6f3e8caa544": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:408::TestCheckedSecondsToMicrosecondsBoundaries",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:414::CheckedSecondsToMicroseconds"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "7d527e7c7135fca1": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_time_audit.md:17::## Configuration and boundary audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:213::TestTimeSkipProducesJumpEvent",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:219::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "7db139cbe3ca327d": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "7de440a90bdca446": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "8109590fed9a2512": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:426::TestFactoryCreatesSplitServices",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:432::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "8110d52db03e855f": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:204::TestStateTransitionsAndEvents",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:207::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "868f8192d7aaf1cc": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:501::TestEnvironmentEnumRevisionAllocationAndFreezeContracts",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:507::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "8a500e506a84b3a8": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:323::TestHandlePlaybackPoseBufferAndFactory",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:344::Stop"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "8b3b25f7165ffd4f": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_time_audit.md:17::## Configuration and boundary audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:71::TestDeterministicAccumulationKeepsFractionalRemainder",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:80::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "8c8ee0cc9df8f745": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:140::TestNoOpSettersDoNotBumpRevision",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:146::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "92d5720eb0b00a58": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "933df5a7a097ffa2": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:380::TestNumericValidationContracts",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:391::IsFiniteNonNegative"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "9423e4a5254de197": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:880::TestPolicyResultAndInvalidOutputFailuresPreserveState",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:886::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "94dfc7fa4a5a6be5": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "95f8b5115cb4f00e": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:106::TestSetGetWeatherSeasonClimateByRegion",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:112::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "96c4ad462c36c38e": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "981260ddf33ae571": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "998794bf5a837482": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:323::TestHandlePlaybackPoseBufferAndFactory",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:330::Pause"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "9a7fac7dc2e06123": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:778::TestAllocationFailuresPreserveStateAndRetry",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:786::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "9b4f31a615fdc852": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:261::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "9bd271ff80c9aedf": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:278::Freeze"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "9f420dbd06ee6da5": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "a12e5630227cc818": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:204::TestStateTransitionsAndEvents",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:212::GetPoseSnapshot"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "a13609dafb646d99": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:555::TestFreezeRejectsNewSurfacesButAllowsExistingUpdates",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:563::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "a3f6971dcbba0aca": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "a542a202429cf8b0": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_time_audit.md:7::## Reviewed state and ownership",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:61::TestInitialSnapshotIsStable",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:66::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "a7edaa14826b15aa": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:442::TestResourceSourceFailureAndPoseSinkPublication",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:434::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "a8122aafc4c29336": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:323::TestHandlePlaybackPoseBufferAndFactory",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:332::Crossfade"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "accb9b23eaaca6ac": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "ad7744fe8bc9a6fb": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "adef4c0a492af8fe": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "b103ef485ad557e5": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "b2223efecde8d621": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "b391b424cfd7ee1f": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:380::TestNumericValidationContracts",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:384::CheckedGenerationIncrement"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "b3d16f902427ccf2": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:737::TestFiniteNumericValidationIsTransactional",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:744::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "b5ffb128c590390b": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:261::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "b817eff1083c59e1": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:261::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "b884b0aade8fff2e": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:272::HasSkeleton"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "b8b0248f578485ac": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "ba9c4a2a489271c5": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:137::TestCheckedArithmeticBoundaries",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:146::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "bb0d05ea0557a8aa": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:261::IsValid"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "bb41388a526c6f45": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:261::IsValid"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "bc2d02c354787d1b": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:442::TestResourceSourceFailureAndPoseSinkPublication",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:434::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "bc8f3db84063df68": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:278::IsFrozen"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "bd89761341499c6e": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "bdf59af717cda815": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "be6dc7c0d00f6d68": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:284::TestOptionalPolicyCanMutateSurface",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:292::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "beccfcb78085f68e": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:261::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "bf0fcdad94584346": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "c643792302d2fb95": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/runtime_foundation.md:7::## \u041f\u0443\u0431\u043b\u0438\u0447\u043d\u0430\u044f \u043c\u043e\u0434\u0435\u043b\u044c",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:636::TestObjectRealityHelpersAreExplicit",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:643::IsLessConcreteRealityLevel"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "c746f9aa06d65a6c": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:261::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "c7878d83edb9090e": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "c820e93d9cefdfdb": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_time_audit.md:17::## Configuration and boundary audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:421::TestFactoryCreatesSplitServices",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:426::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "c8706f5a02d3e011": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:261::=="
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "cb17ec585450795d": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "cb7c12116b6d6bd0": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:261::=="
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "cbabff0703878ee1": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:261::TestTransformAabb",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:266::TranslateBounds"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "cd5d91260171d526": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:778::TestAllocationFailuresPreserveStateAndRetry",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:786::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "ce40522d91e4f45a": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "ce47e91905d0af59": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_time_audit.md:31::## Failure atomicity",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:517::TestInvalidCheckpointPreservesLiveClock",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:523::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "ceaea78f054e4048": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:181::TestCreateDestroyAnimator",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:184::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "ceb22a47cabde721": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:52::TestCheckedMonotonicIdAllocatorExhaustion",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:58::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "ceb25e6e6a0d74ef": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:52::TestCheckedMonotonicIdAllocatorExhaustion",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:58::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "cfd196b54fc95ca3": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_time_audit.md:11::## Public contracts",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:467::TestCheckpointCapturesCanonicalPersistentState",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:480::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "d0f819feec7d1c33": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "d26bb84e0e78e882": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:308::TestMonotonicIdHelperBoundariesAndNoOpCommit",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:350::AllocateMonotonicId"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "d307f3eff2eb1693": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "d3595a343780eb58": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/runtime_foundation.md:7::## \u041f\u0443\u0431\u043b\u0438\u0447\u043d\u0430\u044f \u043c\u043e\u0434\u0435\u043b\u044c",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:636::TestObjectRealityHelpersAreExplicit",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:638::RealityRank"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "d5a015f984998452": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:92::TestRuntimeBudgetDefaultsToUnlimited",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:95::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "d5a0174bd64bcde2": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:380::TestNumericValidationContracts",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:389::IsFinitePositive"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "d61b256cf6c62f74": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:442::TestResourceSourceFailureAndPoseSinkPublication",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:434::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "d693912bd6a85211": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:204::TestStateTransitionsAndEvents",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:207::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "d765b361b652c0e5": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:261::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "d76d23c60ac0cd1b": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:261::IsValid"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "d7d9477552d08322": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:261::IsValid"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "d802f18187d4a0bf": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "dba9e0cca02e9681": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:106::TestSetGetWeatherSeasonClimateByRegion",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:112::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "dc2b4a48b713d19f": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:426::TestFactoryCreatesSplitServices",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:432::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "dc965359920dd0cf": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:276::HasClip"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "dd2795b014c53608": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:261::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "de0b1448b585d64b": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/time.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:61::TestInitialSnapshotIsStable",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:66::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "deb2689ff37a3bc4": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/time.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:61::TestInitialSnapshotIsStable",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:66::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "e004e150ca6389d1": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:242::TestLodPlaceholderChangesPoseState",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:248::SetLod"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "e068dac6c888e414": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:15::### G3-RF-001 \u2014 RuntimeFoundation documentation overstated TRS semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:210::TestQuaternionAndTransformMath",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:218::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "e08f616c06ccd7ae": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "e333d15faa9090bb": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_time_audit.md:17::## Configuration and boundary audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:148::TestInvalidTimeScaleIsRejected",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:155::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "e421139b8fbdb246": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "e78f6884cf445c43": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:261::=="
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "e87123efd8e91f35": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:254::TestValidationFailures",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:278::Freeze"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "e88cca4b8f33278e": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/runtime_foundation.md:7::## \u041f\u0443\u0431\u043b\u0438\u0447\u043d\u0430\u044f \u043c\u043e\u0434\u0435\u043b\u044c",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:608::TestOperationHelpers",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:604::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "e8be9471ce682f57": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "ea461978845294ea": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:308::TestMonotonicIdHelperBoundariesAndNoOpCommit",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:350::AllocateMonotonicId"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "edbcfc8eeadca2a9": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:308::TestMonotonicIdHelperBoundariesAndNoOpCommit",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:311::PeekMonotonicId"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "ee4f4e0676cf0dcd": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "f1aeec6c970db017": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:737::TestFiniteNumericValidationIsTransactional",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:744::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "f3ae8cce7371abba": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:99::TestRuntimeBudgetTracksLimits",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:103::HasTimeBudget"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "f4d83c93a3ee84c3": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "f5605ba91921e29e": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:99::TestRuntimeBudgetTracksLimits",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:103::HasItemBudget"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "f6a7680cf0fefcd6": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:308::TestMonotonicIdHelperBoundariesAndNoOpCommit",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:314::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "f6b1f620099f2e0d": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:27::### G3-RF-002 \u2014 upper-bound seconds conversion can execute an out-of-range float-to-int cast",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:151::TestRuntimeFrameDurationUsesRealMicroseconds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:157::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "f7f1f904531f48a4": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/time.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Time/tests/time_tests.cpp:61::TestInitialSnapshotIsStable",
+        "assertions": [
+          "EngineRuntime/Time/tests/time_tests.cpp:66::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeTimeTests"
+      }
+    },
+    "f800e5a3feb47bb9": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/animation.md:7::## \u041a\u043e\u043d\u0442\u0440\u0430\u043a\u0442\u044b",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Animation/tests/animation_tests.cpp:529::TestFactoryProfilesSeparateMockEvaluation",
+        "assertions": [
+          "EngineRuntime/Animation/tests/animation_tests.cpp:521::Expect("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAnimationTests"
+      }
+    },
+    "f8179648f0fa1054": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:426::TestFactoryCreatesSplitServices",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:432::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "f89139bad65c8fc3": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:555::TestFreezeRejectsNewSurfacesButAllowsExistingUpdates",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:563::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "f8bf569457540e85": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:68::## Audit decisions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:42::TestDefaultInvalidIds",
+        "assertions": [
+          "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:48::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeFoundationTests"
+      }
+    },
+    "f9ada281c361a223": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:426::TestFactoryCreatesSplitServices",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:432::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    },
+    "fa0fb6ce58d0f5ae": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/environment.md:23::## Validation \u0438 transaction semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Environment/tests/environment_tests.cpp:401::TestCrossRegionRevisionDoesNotConflict",
+        "assertions": [
+          "EngineRuntime/Environment/tests/environment_tests.cpp:408::return"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeEnvironmentTests"
+      }
+    }
+  },
+  "schema_version": 1
+}

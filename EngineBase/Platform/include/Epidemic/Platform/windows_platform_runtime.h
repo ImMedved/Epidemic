@@ -20,16 +20,19 @@ class WindowsPlatformRuntime final : public IPlatformRuntime, public IWindowSyst
     // Releases the internal implementation and any tracked windows.
     ~WindowsPlatformRuntime() override;
 
+    // Closes all native resources on the constructing thread. Safe to call repeatedly.
+    void Shutdown();
+
     // Returns the backend name for diagnostics and logs.
     [[nodiscard]] std::string_view Name() const override;
 
     // Returns captured process metadata.
     [[nodiscard]] const ProcessInfo &GetProcessInfo() const override;
 
-    // Returns the current system time.
+    // Returns the current monotonic steady-clock time.
     [[nodiscard]] epidemic::foundation::TimePoint Now() const override;
 
-    // Loads a dynamic library through Win32 LoadLibraryW.
+    // Loads a dynamic library through Win32 LoadLibraryExW using absolute-path search restrictions.
     [[nodiscard]] epidemic::foundation::Result<DynamicLibraryPtr>
     LoadDynamicLibrary(const epidemic::foundation::Path &path) override;
 

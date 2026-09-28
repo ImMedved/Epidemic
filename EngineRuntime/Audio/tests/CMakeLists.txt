@@ -12,4 +12,4 @@ target_link_libraries(EpidemicRuntimeAudioTests
 )
 
 epidemic_configure_target(EpidemicRuntimeAudioTests)
-add_test(NAME EpidemicRuntimeAudioTests COMMAND EpidemicRuntimeAudioTests)
+epidemic_add_test(EpidemicRuntimeAudioTests)

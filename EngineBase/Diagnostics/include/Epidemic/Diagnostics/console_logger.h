@@ -2,28 +2,23 @@
 
 #include <Epidemic/Diagnostics/logger.h>
 
-#include <filesystem>
 #include <fstream>
 #include <mutex>
 
 namespace epidemic::diagnostics
 {
-// This file declares the default logger implementation used by EngineBase smoke apps and tests.
-// ConsoleLogger mirrors each formatted line to stdout and to logs/epidemic.log near the project root.
-
+// Default best-effort console/file sink. ILogger contains all sink exceptions at the public boundary.
 class ConsoleLogger final : public ILogger
 {
-  public:
-    // Formats and writes one structured log message to the console and to the log file.
-    void Log(const LogMessage &message) override;
-
   private:
-    // Lazily opens the log file on first write.
-    // Relationship: called under mutex from Log to keep initialization thread-safe.
+    // Formats and writes one structured log message to the console and, when available, the log file.
+    void Write(const LogMessage &message) override;
+
+    // Lazily opens the log file on first write. Called under mutex from Write.
     void EnsureLogFileInitialized();
 
     std::mutex mutex_;
     std::ofstream file_;
     bool file_initialized_{false};
 };
-} 
+} // namespace epidemic::diagnostics

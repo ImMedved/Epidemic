@@ -1,0 +1,253 @@
+{
+  "modules": {
+    "EngineRuntime/Navigation": {
+      "Authoritative state": {
+        "correction": "Authoritative state is tile registry/dirty work, query records/generations, navigation/result revisions, release/TTL state and privately retained accepted backend/reference results awaiting local publication.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Reviewed module CMake linkage, public dependency carriers and implementation includes; no forbidden peer-major ownership dependency introduced.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Reviewed derived indexes/work lists and private pending/reconciliation records against rollback and deterministic-order regressions.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "Provider/backend failure and exceptions are contained. A successful backend result is retained across local budget/allocation failure and is not rebuilt; purge commits only after all fallible work-list preparation succeeds.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Tile/query work respects item and byte budgets; byte admission uses the actual prepared path shape. IDs, generations and revisions are checked for exhaustion before publication.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Tile/query work respects item and byte budgets; byte admission uses the actual prepared path shape. IDs, generations and revisions are checked for exhaustion before publication.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Reviewed accepted-work ownership, failure atomicity, identity/lifecycle boundaries and permanent defect regressions.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "Navigation exposes no local snapshot/restore API; tile/query state is transient Runtime materialization.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Reviewed current public surface: 33 exact callables, each with Block C contract/test anchor in EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "All generated mutation/lifecycle child obligations are individually REVIEWED; see EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md Mutator obligation review.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Reviewed query/value surfaces against module regressions for detached/state-consistent output and invalid/stale inputs.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Owns navigation tile state/revisions and handle-based budgeted path-query processing over neutral revision, cost, obstacle and backend providers.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "Navigation exposes no local snapshot/restore API; tile/query state is transient Runtime materialization.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "No module-level Shutdown/startup lifecycle API exists. Query lifecycle is Pending/Running/PartiallyComplete/Completed/Failed/Cancelled/Stale with explicit cancel/release/TTL semantics.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "No stronger thread-affinity guarantee is inferred; deterministic module-local ownership and external interface boundaries are preserved.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineRuntime/Physics": {
+      "Authoritative state": {
+        "correction": "Authoritative state is registered shapes, body records/generations, backend-handle ownership, accumulator/fixed-step counters, contact buffer, pending backend cleanup and pending transform projections.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Reviewed module CMake linkage, public dependency carriers and implementation includes; no forbidden peer-major ownership dependency introduced.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Reviewed derived indexes/work lists and private pending/reconciliation records against rollback and deterministic-order regressions.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "Backend creation/simulation/query/contact and transform source/sink failure are contained. Accepted fixed-step prefixes remain committed; sync/projection retry does not resimulate an already accepted backend step. Publication rollback retains cleanup ownership when rollback itself cannot finish.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Body IDs/generations, backend handle uniqueness, revisions, accumulator/time counters and max_substeps are checked. Raycast normalization is overflow-safe for large finite float directions.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Body IDs/generations, backend handle uniqueness, revisions, accumulator/time counters and max_substeps are checked. Raycast normalization is overflow-safe for large finite float directions.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Reviewed accepted-work ownership, failure atomicity, identity/lifecycle boundaries and permanent defect regressions.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "Physics exposes no module-local snapshot/restore surface; physical Runtime state is transient and reconstructed by higher-level composition.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Reviewed current public surface: 54 exact callables, each with Block C contract/test anchor in EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "All generated mutation/lifecycle child obligations are individually REVIEWED; see EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md Mutator obligation review.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Reviewed query/value surfaces against module regressions for detached/state-consistent output and invalid/stale inputs.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Owns collision-shape/body identity, fixed-step timing, backend synchronization, contact/query publication and retryable transform projection through neutral backend/source/sink interfaces.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "Physics exposes no module-local snapshot/restore surface; physical Runtime state is transient and reconstructed by higher-level composition.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Backend initialization and Runtime Shutdown are explicit. Shutdown cleans bodies before referenced shapes, continues independent cleanup best-effort and retries unfinished backend destruction without repeating completed cleanup.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "No stronger thread-affinity guarantee is inferred; deterministic module-local ownership and external interface boundaries are preserved.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineRuntime/Simulation": {
+      "Authoritative state": {
+        "correction": "Authoritative state is jobs/generations, task schedule, memory events, attention maps, facts/revision, proposal batches and shutdown state. Successful ExecuteStep result may be retained as private pending accepted state until publication completes.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Reviewed module CMake linkage, public dependency carriers and implementation includes; no forbidden peer-major ownership dependency introduced.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Reviewed derived indexes/work lists and private pending/reconciliation records against rollback and deterministic-order regressions.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "Callback Result failure/exception is contained. A successful ExecuteStep is accepted once and retained across later local staging failure. Named allocation seams prove attention/proposal/work-list failures do not publish partial state.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Job/work budgets, terminal-job/memory/fact/proposal capacities, generated IDs, generations and fact revision have checked boundary behavior.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Job/work budgets, terminal-job/memory/fact/proposal capacities, generated IDs, generations and fact revision have checked boundary behavior.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Reviewed accepted-work ownership, failure atomicity, identity/lifecycle boundaries and permanent defect regressions.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "No module-local snapshot/restore API exists in Goal 3. Whole-engine persistence and ordered restore remain composition/system responsibilities.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Reviewed current public surface: 55 exact callables, each with Block C contract/test anchor in EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "All generated mutation/lifecycle child obligations are individually REVIEWED; see EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md Mutator obligation review.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Reviewed query/value surfaces against module regressions for detached/state-consistent output and invalid/stale inputs.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Owns simulation jobs, scheduled tasks, world-memory events, attention/relevance state, abstract facts and proposal queue infrastructure; downstream domain state remains external.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "No module-local snapshot/restore API exists in Goal 3. Whole-engine persistence and ordered restore remain composition/system responsibilities.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Shutdown becomes terminal for new Tick/Schedule/proposal publication as soon as cleanup starts; cancellation/cleanup remain retryable and completed shutdown is idempotent.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "No stronger thread-affinity guarantee is inferred; deterministic module-local ownership and external interface boundaries are preserved.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineRuntime/Streaming": {
+      "Authoritative state": {
+        "correction": "Authoritative state is requests, demands, chunk-to-current-request mapping, observable chunk states, revisions/completion sequence, statistics and shutdown state. Accepted step result and cleanup-prefix flags are private reconciliation state.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Reviewed module CMake linkage, public dependency carriers and implementation includes; no forbidden peer-major ownership dependency introduced.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Reviewed derived indexes/work lists and private pending/reconciliation records against rollback and deterministic-order regressions.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "Runtime-owned allocation/publication failure occurs before mutation or preserves a durable accepted result/cleanup owner. Successful external ExecuteStep/cleanup prefixes are not repeated after a later local failure.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Item, CPU-time and byte budgets are bounded and checked; request/demand IDs, generations, request revisions and completion sequence are non-wrapping.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Item, CPU-time and byte budgets are bounded and checked; request/demand IDs, generations, request revisions and completion sequence are non-wrapping.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Reviewed accepted-work ownership, failure atomicity, identity/lifecycle boundaries and permanent defect regressions.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "No module-local snapshot/restore API exists. Persistent world/resource data stays behind dependency ports; retry state is transient Runtime ownership.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Reviewed current public surface: 52 exact callables, each with Block C contract/test anchor in EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "All generated mutation/lifecycle child obligations are individually REVIEWED; see EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md Mutator obligation review.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Reviewed query/value surfaces against module regressions for detached/state-consistent output and invalid/stale inputs.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Owns demand/request identity, request progress, chunk state, bounded progressive streaming and retryable residency/commit cleanup; external world, persistence, resource and residency authority stays behind ports.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "No module-local snapshot/restore API exists. Persistent world/resource data stays behind dependency ports; retry state is transient Runtime ownership.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Activation/deactivation/unload and Runtime Shutdown are explicit; once shutdown begins new demand is rejected and repeated Shutdown continues unfinished cleanup without repeating completed prefixes.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "No stronger thread-affinity guarantee is inferred; deterministic module-local ownership and external interface boundaries are preserved.",
+        "status": "REVIEWED"
+      }
+    }
+  },
+  "schema_version": 1
+}

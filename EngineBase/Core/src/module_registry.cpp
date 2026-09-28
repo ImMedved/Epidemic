@@ -2,8 +2,14 @@
 
 #include <Epidemic/Diagnostics/profiling.h>
 
+#if defined(EPIDEMIC_CORE_ENABLE_TEST_HOOKS)
+#include "module_registry_test_hooks.h"
+#endif
+
 #include <algorithm>
+#include <exception>
 #include <functional>
+#include <new>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -15,6 +21,22 @@ namespace epidemic::core
 
 namespace
 {
+#if defined(EPIDEMIC_CORE_ENABLE_TEST_HOOKS)
+thread_local testing::ModuleRegistryFaultPoint g_module_registry_fault_point =
+    testing::ModuleRegistryFaultPoint::None;
+
+[[nodiscard]] bool ConsumeModuleRegistryFault(testing::ModuleRegistryFaultPoint fault_point) noexcept
+{
+    if (g_module_registry_fault_point != fault_point)
+    {
+        return false;
+    }
+
+    g_module_registry_fault_point = testing::ModuleRegistryFaultPoint::None;
+    return true;
+}
+#endif
+
 // Converts manifest id text into the strongly typed module identifier used by the registry.
 [[nodiscard]] foundation::ModuleId ToModuleId(std::string_view id_text)
 {
@@ -31,6 +53,55 @@ std::string BuildLifecycleMessage(std::string_view action, const ModuleManifest 
     message += manifest.name;
     message += ")";
     return message;
+}
+
+void LogLifecycleNoThrow(diagnostics::ILogger &logger, diagnostics::LogLevel level, std::string_view action,
+                         const ModuleManifest &manifest) noexcept
+{
+    try
+    {
+        logger.Log(level, "Core", "Lifecycle", BuildLifecycleMessage(action, manifest));
+    }
+    catch (...)
+    {
+        // Formatting and logging are observational and cannot stop lifecycle work.
+    }
+}
+
+void LogModuleCountNoThrow(diagnostics::ILogger &logger, std::size_t module_count) noexcept
+{
+    try
+    {
+        logger.Info("Core", "Modules", "Registered modules: " + std::to_string(module_count));
+    }
+    catch (...)
+    {
+    }
+}
+
+// Keeps diagnostic formatting from masking the cleanup failure being reported.
+void LogShutdownFailureNoThrow(diagnostics::ILogger &logger, const ModuleManifest &manifest,
+                               std::exception_ptr failure) noexcept
+{
+    try
+    {
+        try
+        {
+            std::rethrow_exception(failure);
+        }
+        catch (const std::exception &exception)
+        {
+            logger.Error("Core", "Lifecycle", "Module shutdown failed for '" + manifest.id + "': " + exception.what());
+        }
+        catch (...)
+        {
+            logger.Error("Core", "Lifecycle", "Module shutdown failed for '" + manifest.id + "' with unknown exception");
+        }
+    }
+    catch (...)
+    {
+        // A best-effort diagnostic must never replace the original cleanup failure.
+    }
 }
 } // namespace
 
@@ -54,13 +125,35 @@ void ModuleRegistry::Register(std::unique_ptr<IModule> module)
         throw std::runtime_error("Module id must not be empty");
     }
 
-    if (module_index_by_id_.contains(module_id))
+    if (const auto existing_name = canonical_module_name_by_id_.find(module_id); existing_name != canonical_module_name_by_id_.end())
     {
-        throw std::runtime_error("Module id already registered: " + manifest.id);
+        if (existing_name->second == manifest.id)
+        {
+            throw std::runtime_error("Module id already registered: " + manifest.id);
+        }
+
+        throw std::runtime_error("Module id hash collision between '" + existing_name->second + "' and '" +
+                                 manifest.id + "'");
     }
 
-    module_index_by_id_.emplace(module_id, modules_.size());
+    auto candidate_indices = module_index_by_id_;
+    auto candidate_names = canonical_module_name_by_id_;
+    candidate_indices.emplace(module_id, modules_.size());
+    candidate_names.emplace(module_id, manifest.id);
+
+    // Complete every fallible allocation before publishing any part of the registration.
+    modules_.reserve(modules_.size() + 1);
+    shutdown_completed_.reserve(shutdown_completed_.size() + 1);
+#if defined(EPIDEMIC_CORE_ENABLE_TEST_HOOKS)
+    if (ConsumeModuleRegistryFault(testing::ModuleRegistryFaultPoint::BeforeRegistrationCommit))
+    {
+        throw std::bad_alloc{};
+    }
+#endif
     modules_.push_back(std::move(module));
+    shutdown_completed_.push_back(0);
+    module_index_by_id_.swap(candidate_indices);
+    canonical_module_name_by_id_.swap(candidate_names);
     execution_plan_.clear();
     state_ = LifecycleState::Registered;
 }
@@ -74,16 +167,17 @@ void ModuleRegistry::BootstrapAll(ServiceContainer &services, diagnostics::ILogg
         throw std::runtime_error("Invalid state for module bootstrap");
     }
 
-    logger.Info("Core", "Modules", "Registered modules: " + std::to_string(modules_.size()));
+    LogModuleCountNoThrow(logger, modules_.size());
     EnsureExecutionPlan(logger);
     bootstrapped_count_ = 0;
+    std::fill(shutdown_completed_.begin(), shutdown_completed_.end(), std::uint8_t{0});
 
     try
     {
         for (const auto index : execution_plan_)
         {
             const auto &module = modules_[index];
-            logger.Info("Core", "Lifecycle", BuildLifecycleMessage("Bootstrapping", module->Manifest()));
+            LogLifecycleNoThrow(logger, diagnostics::LogLevel::Info, "Bootstrapping", module->Manifest());
             module->Bootstrap(services);
             ++bootstrapped_count_;
         }
@@ -111,7 +205,7 @@ void ModuleRegistry::InitializeAll(ServiceContainer &services, diagnostics::ILog
         for (const auto index : execution_plan_)
         {
             const auto &module = modules_[index];
-            logger.Info("Core", "Lifecycle", BuildLifecycleMessage("Initializing", module->Manifest()));
+            LogLifecycleNoThrow(logger, diagnostics::LogLevel::Info, "Initializing", module->Manifest());
             module->Initialize(services);
         }
 
@@ -138,7 +232,7 @@ void ModuleRegistry::TickAll(ServiceContainer &services, diagnostics::ILogger &l
         for (const auto index : execution_plan_)
         {
             const auto &module = modules_[index];
-            logger.Debug("Core", "Lifecycle", BuildLifecycleMessage("Ticking", module->Manifest()));
+            LogLifecycleNoThrow(logger, diagnostics::LogLevel::Debug, "Ticking", module->Manifest());
             module->Tick(services, frame_context);
         }
     }
@@ -166,24 +260,50 @@ void ModuleRegistry::ShutdownAll(ServiceContainer &services, diagnostics::ILogge
     EnsureExecutionPlan(logger);
     const auto shutdown_count = std::min(bootstrapped_count_, execution_plan_.size());
 
-    try
+    std::exception_ptr first_error;
+    for (std::size_t reverse_index = shutdown_count; reverse_index > 0; --reverse_index)
     {
-        for (std::size_t reverse_index = shutdown_count; reverse_index > 0; --reverse_index)
+        const auto execution_index = execution_plan_[reverse_index - 1];
+        if (shutdown_completed_[execution_index] != 0)
         {
-            const auto execution_index = execution_plan_[reverse_index - 1];
-            const auto &module = modules_[execution_index];
-            logger.Info("Core", "Lifecycle", BuildLifecycleMessage("Shutting down", module->Manifest()));
-            module->Shutdown(services);
+            continue;
         }
 
-        bootstrapped_count_ = 0;
-        state_ = LifecycleState::ShutDown;
+        const auto &module = modules_[execution_index];
+        LogLifecycleNoThrow(logger, diagnostics::LogLevel::Info, "Shutting down", module->Manifest());
+        try
+        {
+            module->Shutdown(services);
+            shutdown_completed_[execution_index] = 1;
+        }
+        catch (const std::exception &)
+        {
+            const auto failure = std::current_exception();
+            LogShutdownFailureNoThrow(logger, module->Manifest(), failure);
+            if (!first_error)
+            {
+                first_error = failure;
+            }
+        }
+        catch (...)
+        {
+            const auto failure = std::current_exception();
+            LogShutdownFailureNoThrow(logger, module->Manifest(), failure);
+            if (!first_error)
+            {
+                first_error = failure;
+            }
+        }
     }
-    catch (...)
+
+    if (first_error)
     {
         state_ = LifecycleState::Failed;
-        throw;
+        std::rethrow_exception(first_error);
     }
+
+    bootstrapped_count_ = 0;
+    state_ = LifecycleState::ShutDown;
 }
 
 // Returns the number of registered module instances.
@@ -224,7 +344,9 @@ void ModuleRegistry::EnsureExecutionPlan(diagnostics::ILogger &logger)
 
         visit_states[module_index] = VisitState::Visiting;
         const auto &manifest = modules_[module_index]->Manifest();
-        for (const auto &dependency_id_text : manifest.dependencies)
+        auto dependencies = manifest.dependencies;
+        std::sort(dependencies.begin(), dependencies.end());
+        for (const auto &dependency_id_text : dependencies)
         {
             const auto dependency_id = ToModuleId(dependency_id_text);
             if (!dependency_id.IsValid())
@@ -238,6 +360,13 @@ void ModuleRegistry::EnsureExecutionPlan(diagnostics::ILogger &logger)
                 throw std::runtime_error("Missing module dependency '" + dependency_id_text + "' for module '" + manifest.id + "'");
             }
 
+            const auto canonical_dependency = canonical_module_name_by_id_.find(dependency_id);
+            if (canonical_dependency == canonical_module_name_by_id_.end() || canonical_dependency->second != dependency_id_text)
+            {
+                throw std::runtime_error("Module dependency id hash collision for '" + dependency_id_text +
+                                         "' in module '" + manifest.id + "'");
+            }
+
             visit(dependency_it->second);
         }
 
@@ -245,7 +374,15 @@ void ModuleRegistry::EnsureExecutionPlan(diagnostics::ILogger &logger)
         resolved.push_back(module_index);
     };
 
+    std::vector<std::size_t> module_indices(modules_.size());
     for (std::size_t module_index = 0; module_index < modules_.size(); ++module_index)
+    {
+        module_indices[module_index] = module_index;
+    }
+    std::sort(module_indices.begin(), module_indices.end(), [this](std::size_t left, std::size_t right) {
+        return modules_[left]->Manifest().id < modules_[right]->Manifest().id;
+    });
+    for (const auto module_index : module_indices)
     {
         visit(module_index);
     }
@@ -264,4 +401,16 @@ void ModuleRegistry::EnsureExecutionPlan(diagnostics::ILogger &logger)
     }
     logger.Info("Core", "Modules", stream.str());
 }
+#if defined(EPIDEMIC_CORE_ENABLE_TEST_HOOKS)
+void testing::SetModuleRegistryFaultPoint(ModuleRegistryFaultPoint fault_point) noexcept
+{
+    g_module_registry_fault_point = fault_point;
+}
+
+void testing::ClearModuleRegistryFaultPoint() noexcept
+{
+    g_module_registry_fault_point = ModuleRegistryFaultPoint::None;
+}
+#endif
+
 } // namespace epidemic::core

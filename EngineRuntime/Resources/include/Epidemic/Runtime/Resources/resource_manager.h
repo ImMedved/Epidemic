@@ -14,7 +14,9 @@ namespace epidemic::runtime
 {
 struct ResourceProcessingStats
 {
+    std::size_t attempted_jobs = 0;
     std::size_t processed_jobs = 0;
+    std::size_t skipped_jobs = 0;
     std::size_t loaded_resources = 0;
     std::size_t failed_resources = 0;
     std::size_t bytes_loaded = 0;

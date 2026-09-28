@@ -34,8 +34,9 @@ inline int RunNamedTests(std::initializer_list<NamedTest> tests)
     {
         for (const auto &test : tests)
         {
+            std::cout << "[RUN] " << test.name << '\n' << std::flush;
             test.function();
-            std::cout << "[PASS] " << test.name << '\n';
+            std::cout << "[PASS] " << test.name << '\n' << std::flush;
         }
 
         return 0;

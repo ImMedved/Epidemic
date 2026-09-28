@@ -35,10 +35,16 @@ template <typename Tag> struct BasicId
 
     // Creates an id from a source string.
     // Input: source string view.
-    // Output: hashed id, or 0 when the source is empty.
+    // Output: hashed id, or 0 when the source is empty. Non-empty sources reserve 0 as invalid.
     [[nodiscard]] static constexpr BasicId FromString(std::string_view source) noexcept
     {
-        return source.empty() ? BasicId{0} : BasicId{HashString(source)};
+        if (source.empty())
+        {
+            return BasicId{0};
+        }
+
+        const auto hash = HashString(source);
+        return BasicId{hash == 0 ? 1 : hash};
     }
 
     // Returns true when the id is non-zero.
@@ -85,7 +91,7 @@ using NameId = detail::BasicId<detail::NameIdTag>;
 using ModuleId = detail::BasicId<detail::ModuleIdTag>;
 using ServiceId = detail::BasicId<detail::ServiceIdTag>;
 using EventTypeId = detail::BasicId<detail::EventTypeIdTag>;
-} 
+} // namespace epidemic::foundation
 
 namespace std
 {

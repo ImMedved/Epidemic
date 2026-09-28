@@ -9,7 +9,7 @@ target_include_directories(EpidemicRuntimePersistence PUBLIC
 
 target_link_libraries(EpidemicRuntimePersistence
     PUBLIC EpidemicRuntimeFoundation
-    PRIVATE EpidemicFoundation
+    PUBLIC EpidemicFoundation
 )
 
 set(_epidemic_runtime_persistence_forbidden_targets

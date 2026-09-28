@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "archive_tree.h"
 #include "Epidemic/Runtime/Serialization/archive_reader.h"
@@ -10,6 +10,8 @@
 
 namespace epidemic::runtime
 {
+struct SerializationRuntimeTestAccess;
+
 class InMemoryArchiveWriter final : public IArchiveWriter
 {
   public:
@@ -32,8 +34,11 @@ class InMemoryArchiveWriter final : public IArchiveWriter
     [[nodiscard]] foundation::Result<SerializedDocument> Finalize(foundation::StringId type_id, SchemaVersion schema_version) override;
 
     [[nodiscard]] ArchiveObjectPtr Snapshot() const;
+    [[nodiscard]] foundation::Result<void> MergeRootFieldsTransactional(const ArchiveObject& source);
 
   private:
+    friend struct SerializationRuntimeTestAccess;
+
     enum class ContextKind { Object, Array, ArrayElement };
     struct Context
     {
@@ -43,11 +48,20 @@ class InMemoryArchiveWriter final : public IArchiveWriter
     };
 
     [[nodiscard]] foundation::Result<void> EnsureWritable() const;
+    [[nodiscard]] foundation::Result<void> ValidateFieldWrite(std::string_view name) const;
     [[nodiscard]] foundation::Result<void> WriteValue(std::string_view name, ArchiveValue value);
+    [[nodiscard]] bool HasUninitializedArrays() const;
+    [[nodiscard]] static bool HasUninitializedArrays(const ArchiveObject& object);
+    [[nodiscard]] static bool HasUninitializedArrays(const ArchiveValue& value);
 
     ArchiveObjectPtr root_;
     std::vector<Context> stack_;
     bool finalized_ = false;
+    bool fail_next_object_publication_for_testing_ = false;
+    bool fail_next_array_publication_for_testing_ = false;
+    bool fail_next_array_element_publication_for_testing_ = false;
+    bool fail_next_field_publication_for_testing_ = false;
+    bool fail_next_finalize_candidate_for_testing_ = false;
 };
 
 class InMemoryArchiveReader final : public IArchiveReader

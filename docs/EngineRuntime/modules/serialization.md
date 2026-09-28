@@ -14,7 +14,7 @@ Document имеет valid type ID, поддерживаемый format version �
 
 ## Граница и стабильность
 
-Serialization не выполняет persistence transactions и не знает World. Он frozen; новые serializers и migrations регистрируются через существующие ports.
+Serialization не выполняет persistence transactions и не знает World. После Goal 3 и canonical evidence convergence модуль имеет статус `LOCAL_READY`; новые serializers и migrations регистрируются через существующие ports. Статус `FROZEN` присваивается только после общих Runtime freeze gates.
 
 ## Карта публичных заголовков
 

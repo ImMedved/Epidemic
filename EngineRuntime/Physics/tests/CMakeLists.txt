@@ -12,4 +12,4 @@ target_link_libraries(EpidemicRuntimePhysicsTests
 )
 
 epidemic_configure_target(EpidemicRuntimePhysicsTests)
-add_test(NAME EpidemicRuntimePhysicsTests COMMAND EpidemicRuntimePhysicsTests)
+epidemic_add_test(EpidemicRuntimePhysicsTests)

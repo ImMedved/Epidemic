@@ -4,6 +4,9 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "Epidemic/Foundation/error.h"
+#include "Epidemic/Foundation/result.h"
+
 namespace epidemic::runtime
 {
 // Zero values mean unlimited/no constraint. RuntimeBudget is a compact value object,
@@ -27,6 +30,17 @@ struct RuntimeBudget
         return !HasTimeLimit() && !HasItemLimit() && !HasByteLimit();
     }
 };
+
+
+[[nodiscard]] inline foundation::Result<void> ValidateRuntimeBudget(const RuntimeBudget& budget)
+{
+    if (budget.max_time.count() < 0)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("runtime.invalid_budget", "runtime time budget must not be negative"));
+    }
+    return foundation::Result<void>::Success();
+}
 
 struct RuntimeBudgetConsumption
 {

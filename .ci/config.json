@@ -1,0 +1,20 @@
+{
+  "blueprint": "https://github.com/Artemonim/AgentEnforcer2",
+  "schema_version": 1,
+  "default_mode": "Full",
+  "build_root": "build/ae2",
+  "command_timeout_sec": 3600,
+  "ctest_timeout_sec": 300,
+  "profiles": [
+    "base-debug",
+    "base-release",
+    "runtime-debug",
+    "runtime-release",
+    "full-debug",
+    "full-release"
+  ],
+  "notes": {
+    "coverage": "The stage is present but skipped until a Windows C++ coverage collector and policy are approved.",
+    "new_tests": "New add_test() entries are auto-discovered; update docs/freeze/ctest_manifest.json when the intended exact matrix changes."
+  }
+}

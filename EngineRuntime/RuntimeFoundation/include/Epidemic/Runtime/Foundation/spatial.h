@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <iterator>
 #include <limits>
 
 namespace epidemic::runtime
@@ -77,13 +78,18 @@ struct Sphere
 
 [[nodiscard]] inline Quaternion Normalize(const Quaternion& value) noexcept
 {
-    const float length_squared = (value.x * value.x) + (value.y * value.y) + (value.z * value.z) + (value.w * value.w);
-    if (!std::isfinite(length_squared) || length_squared <= kSpatialEpsilon)
+    const double length_squared = (static_cast<double>(value.x) * value.x) +
+                                  (static_cast<double>(value.y) * value.y) +
+                                  (static_cast<double>(value.z) * value.z) +
+                                  (static_cast<double>(value.w) * value.w);
+    if (!std::isfinite(length_squared) || length_squared <= static_cast<double>(kSpatialEpsilon) ||
+        length_squared > static_cast<double>(std::numeric_limits<float>::max()))
     {
         return {};
     }
 
-    const float inverse_length = 1.0f / std::sqrt(length_squared);
+    const float representable_length_squared = static_cast<float>(length_squared);
+    const float inverse_length = 1.0f / std::sqrt(representable_length_squared);
     return Quaternion{value.x * inverse_length, value.y * inverse_length, value.z * inverse_length, value.w * inverse_length};
 }
 
@@ -171,8 +177,15 @@ struct Sphere
 
 [[nodiscard]] inline bool IsNormalized(Quat value) noexcept
 {
-    const float length_squared = (value.x * value.x) + (value.y * value.y) + (value.z * value.z) + (value.w * value.w);
-    return std::isfinite(length_squared) && std::abs(length_squared - 1.0f) <= 0.001f;
+    const double length_squared = (static_cast<double>(value.x) * value.x) +
+                                  (static_cast<double>(value.y) * value.y) +
+                                  (static_cast<double>(value.z) * value.z) +
+                                  (static_cast<double>(value.w) * value.w);
+    if (!std::isfinite(length_squared) || length_squared > static_cast<double>(std::numeric_limits<float>::max()))
+    {
+        return false;
+    }
+    return std::abs(static_cast<float>(length_squared) - 1.0f) <= 0.001f;
 }
 
 [[nodiscard]] inline bool IsValidTransform(const Transform& transform) noexcept

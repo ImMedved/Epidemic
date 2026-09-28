@@ -30,7 +30,8 @@ std::uint32_t SerializedDocument::GetFormatVersion() const
 
 bool SerializedDocument::IsValid() const noexcept
 {
-    return impl_ != nullptr && impl_->type_id.IsValid() && impl_->format_version == 1u && impl_->root != nullptr;
+    return impl_ != nullptr && impl_->type_id.IsValid() && impl_->schema_version != SchemaVersion{} &&
+           impl_->format_version == 1u && impl_->root != nullptr;
 }
 
 foundation::Result<SerializationServices> CreateSerializationServices(const SerializationOptions& options)

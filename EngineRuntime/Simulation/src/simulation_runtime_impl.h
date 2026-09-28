@@ -58,14 +58,40 @@ public:
 
     void SetJobStateForTesting(SimulationJobHandle handle, SimulationJobState state);
     [[nodiscard]] std::optional<ScheduledSimulationTaskId> ActiveScheduleForTesting(SimulationJobHandle handle) const;
+    void SetNextJobIdentityForTesting(std::uint64_t id, std::uint32_t generation) noexcept;
+    void SetNextMemoryIdForTesting(std::uint64_t id) noexcept;
+    void SetNextTaskIdForTesting(std::uint64_t id) noexcept;
+    void SetFactRevisionForTesting(std::uint64_t revision) noexcept;
+    void FailNextTickWorkListPreparationForTesting() noexcept { fail_next_tick_work_list_preparation_for_testing_ = true; }
+    void FailNextTickResultStagingForTesting() noexcept { fail_next_tick_result_staging_for_testing_ = true; }
+    void FailNextAttentionPublicationForTesting() noexcept { fail_next_attention_publication_for_testing_ = true; }
+    void FailNextProposalPublicationForTesting() noexcept { fail_next_proposal_publication_for_testing_ = true; }
+    void FailNextMemoryWorkListPreparationForTesting() noexcept { fail_next_memory_work_list_preparation_for_testing_ = true; }
 
 private:
+    struct RegionAttentionRecord
+    {
+        AttentionScore score{};
+        SimulationZoneState zone_state = SimulationZoneState::Dormant;
+    };
+
+    enum class ShutdownState
+    {
+        Running,
+        ShuttingDown,
+        Shutdown
+    };
+
     struct JobRecord
     {
         SimulationJobDesc desc{};
         SimulationJobHandle handle{};
         SimulationJobState state = SimulationJobState::Pending;
         std::shared_ptr<ISimulationJob> executable{};
+        // A successful external ExecuteStep result is accepted exactly once. Runtime-local
+        // publication may be retried from this durable owner without calling the job again.
+        std::optional<SimulationStepResult> pending_step_result{};
+        std::uint32_t pending_step_granted_work_units = 0;
         std::optional<SimulationStepResult> pending_main_thread_result{};
         std::optional<ScheduledSimulationTaskId> active_schedule{};
     };
@@ -97,13 +123,16 @@ private:
     std::uint64_t fact_revision_ = 0;
     std::unordered_map<SimulationJobId, JobRecord> jobs_;
     std::unordered_map<RuntimeObjectId, AttentionScore> object_attention_;
-    std::unordered_map<RegionId, AttentionScore> region_attention_;
-    std::unordered_map<RegionId, SimulationZoneState> region_zone_states_;
+    std::unordered_map<RegionId, RegionAttentionRecord> region_attention_;
     std::unordered_map<WorldMemoryEventId, WorldMemoryEvent> memory_events_;
     std::vector<AbstractFact> facts_;
     std::vector<SimulationProposalBatch> proposal_batches_;
     std::unordered_map<ScheduledSimulationTaskId, ScheduledSimulationTask> scheduled_tasks_;
-    bool accepting_jobs_ = true;
-    bool shutdown_ = false;
+    ShutdownState shutdown_state_ = ShutdownState::Running;
+    bool fail_next_tick_work_list_preparation_for_testing_ = false;
+    bool fail_next_tick_result_staging_for_testing_ = false;
+    bool fail_next_attention_publication_for_testing_ = false;
+    bool fail_next_proposal_publication_for_testing_ = false;
+    mutable bool fail_next_memory_work_list_preparation_for_testing_ = false;
 };
 } // namespace epidemic::runtime::simulation

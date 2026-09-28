@@ -83,7 +83,11 @@ class ITaskScheduler
     // Queues a task into a group and returns a handle for optional direct waiting.
     [[nodiscard]] virtual TaskHandle Schedule(Task task, TaskGroup &group, std::string debug_name = {}) = 0;
 
-    // Blocks until the specified task finishes and rethrows its exception, if any.
+    // Attempts to cancel a task that is still queued. Returns false for invalid, foreign, running, or completed handles.
+    [[nodiscard]] virtual bool Cancel(const TaskHandle &handle) = 0;
+
+    // Blocks until the specified task finishes or is cancelled and rethrows its exception, if any.
+    // A handle created by a different scheduler is rejected.
     virtual void Wait(const TaskHandle &handle) = 0;
 
     // Blocks until every task in the group finishes and rethrows the first captured exception, if any.
@@ -92,7 +96,13 @@ class ITaskScheduler
     // Blocks until the scheduler has no queued or active tasks.
     virtual void WaitIdle() = 0;
 
-    // Stops accepting new work and requests worker shutdown.
+    // Requests worker shutdown without joining worker threads. Safe from scheduler workers.
+    virtual void RequestStop() noexcept = 0;
+
+    // Joins worker threads after stop was requested. Must not be called from a scheduler worker.
+    virtual void Join() = 0;
+
+    // Stops accepting new work, requests worker shutdown, and joins worker threads.
     virtual void Shutdown() = 0;
 
     // Returns the number of worker threads owned by the scheduler.
@@ -120,6 +130,9 @@ class SimpleTaskScheduler final : public ITaskScheduler
     // Queues one task into a group.
     [[nodiscard]] TaskHandle Schedule(Task task, TaskGroup &group, std::string debug_name = {}) override;
 
+    // Cancels one queued task if it still belongs to this scheduler and has not started.
+    [[nodiscard]] bool Cancel(const TaskHandle &handle) override;
+
     // Waits for one task and propagates its failure.
     void Wait(const TaskHandle &handle) override;
 
@@ -128,6 +141,12 @@ class SimpleTaskScheduler final : public ITaskScheduler
 
     // Waits for all currently queued and active tasks and then rethrows the first scheduler-level failure.
     void WaitIdle() override;
+
+    // Requests worker stop without joining.
+    void RequestStop() noexcept override;
+
+    // Joins worker threads. Throws if called from one of the worker threads.
+    void Join() override;
 
     // Prevents new scheduling and joins worker threads.
     void Shutdown() override;
@@ -142,6 +161,8 @@ class SimpleTaskScheduler final : public ITaskScheduler
     [[nodiscard]] std::vector<std::string> WorkerThreadNames() const override;
 
   private:
+    struct SharedState;
+
     struct QueuedTask
     {
         Task task;
@@ -152,18 +173,17 @@ class SimpleTaskScheduler final : public ITaskScheduler
     // Shared implementation for grouped and ungrouped scheduling requests.
     [[nodiscard]] TaskHandle ScheduleImpl(Task task, std::shared_ptr<TaskGroup::State> group_state, std::string debug_name);
 
-    // Worker-thread loop that waits for queued tasks, executes them, and updates completion state.
-    void WorkerLoop(std::stop_token stop_token);
+    // Worker-thread loop owns shared state independently from the scheduler facade lifetime.
+    static void WorkerLoop(std::shared_ptr<SharedState> state, std::stop_token stop_token);
 
-    mutable std::mutex mutex_;
-    std::condition_variable cv_;
-    std::condition_variable idle_cv_;
-    std::queue<QueuedTask> tasks_;
+    // Detaches the calling worker and joins all remaining workers during worker-owned destruction.
+    void DetachCurrentWorkerAndJoinOthers() noexcept;
+
+    std::shared_ptr<SharedState> state_;
     std::vector<std::jthread> workers_;
+    std::vector<std::thread::id> worker_thread_ids_;
     std::vector<std::string> worker_names_;
-    std::size_t active_tasks_{0};
-    std::size_t completed_tasks_{0};
-    std::exception_ptr first_exception_;
-    bool stopping_{false};
+
+    [[nodiscard]] bool IsWorkerThread(std::thread::id thread_id) const noexcept;
 };
 } // namespace epidemic::core::tasks

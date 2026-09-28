@@ -1,37 +1,80 @@
-﻿#include "serializer_registry.h"
+#include "serializer_registry.h"
 
 #include "Epidemic/Runtime/Serialization/serialization_error.h"
+
+#include <exception>
+#include <new>
 
 namespace epidemic::runtime
 {
 namespace
 {
-[[nodiscard]] foundation::Result<void> SerializerFailure(std::string_view code, std::string_view message)
+[[nodiscard]] foundation::Result<void> SerializerFailure(std::string_view code, std::string_view message, std::string_view context = {})
 {
-    return foundation::Result<void>::Failure(CreateSerializationError(code, message));
+    return foundation::Result<void>::Failure(CreateSerializationError(code, message, context));
 }
 } // namespace
 
 foundation::Result<void> SerializerRegistry::RegisterSerializer(std::shared_ptr<const ISerializer> serializer)
 {
+    if (frozen_)
+    {
+        return SerializerFailure("serialization.registry_frozen", "serializer registry is frozen");
+    }
     if (!serializer)
     {
         return SerializerFailure("serialization.serializer.null", "serializer pointer must not be null");
     }
 
-    const foundation::StringId type_id = serializer->GetTypeId();
-    if (!type_id.IsValid())
+    try
     {
-        return SerializerFailure("serialization.serializer.invalid_type", "serializer must declare a valid type id");
-    }
+        const foundation::StringId type_id = serializer->GetTypeId();
+        if (!type_id.IsValid())
+        {
+            return SerializerFailure("serialization.serializer.invalid_type", "serializer must declare a valid type id");
+        }
+        if (serializer->GetSchemaVersion() == SchemaVersion{})
+        {
+            return SerializerFailure("serialization.serializer.invalid_schema_version",
+                                     "serializer must declare a non-zero schema version");
+        }
 
-    if (serializers_.contains(type_id))
+        if (serializers_.contains(type_id))
+        {
+            return SerializerFailure("serialization.serializer.duplicate_type", "serializer type is already registered");
+        }
+
+        if (fail_next_registration_allocation_for_testing_)
+        {
+            fail_next_registration_allocation_for_testing_ = false;
+            throw std::bad_alloc{};
+        }
+        serializers_.emplace(type_id, std::move(serializer));
+        return foundation::Result<void>::Success();
+    }
+    catch (const std::bad_alloc&)
     {
-        return SerializerFailure("serialization.serializer.duplicate_type", "serializer type is already registered");
+        return SerializerFailure("serialization.out_of_memory", "serializer registration could not allocate state");
     }
+    catch (const std::exception& error)
+    {
+        return SerializerFailure("serialization.serializer.exception", "serializer metadata callback threw", error.what());
+    }
+    catch (...)
+    {
+        return SerializerFailure("serialization.serializer.exception", "serializer metadata callback threw an unknown exception");
+    }
+}
 
-    serializers_.emplace(type_id, std::move(serializer));
+foundation::Result<void> SerializerRegistry::Freeze()
+{
+    frozen_ = true;
     return foundation::Result<void>::Success();
+}
+
+bool SerializerRegistry::IsFrozen() const noexcept
+{
+    return frozen_;
 }
 
 std::shared_ptr<const ISerializer> SerializerRegistry::FindSerializer(foundation::StringId type_id) const

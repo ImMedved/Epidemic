@@ -1,0 +1,287 @@
+{
+  "modules": {
+    "EngineFramework/GameplayWorldStateOwners/Dialogue": {
+      "Authoritative state": {
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "status": "REVIEWED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Narrative": {
+      "Authoritative state": {
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "status": "REVIEWED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/SaveGame": {
+      "Authoritative state": {
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "status": "REVIEWED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/World": {
+      "Authoritative state": {
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "status": "REVIEWED"
+      }
+    },
+    "EngineFramework/IntegrationLayer/NarrativeIntegration": {
+      "Authoritative state": {
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "status": "REVIEWED"
+      }
+    },
+    "EngineFramework/IntegrationLayer/WorldIntegration": {
+      "Authoritative state": {
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "status": "REVIEWED"
+      }
+    }
+  },
+  "schema_version": 1
+}

@@ -2,9 +2,12 @@
 
 #include "Epidemic/Runtime/Animation/animation_runtime.h"
 
+#include <array>
+#include <cstdint>
 #include <optional>
 #include <unordered_map>
 #include <vector>
+#include <string_view>
 
 namespace epidemic::runtime::animation
 {
@@ -23,6 +26,8 @@ public:
     [[nodiscard]] bool HasSkeleton(SkeletonId id) const override;
     [[nodiscard]] foundation::Result<void> RegisterClip(AnimationClipDesc desc) override;
     [[nodiscard]] bool HasClip(AnimationClipId id) const override;
+    [[nodiscard]] foundation::Result<void> Freeze() override;
+    [[nodiscard]] bool IsFrozen() const noexcept override;
 
     [[nodiscard]] foundation::Result<AnimatorHandle> CreateAnimatorHandle(const AnimatorDesc& desc) override;
     [[nodiscard]] foundation::Result<void> DestroyAnimator(AnimatorHandle handle) override;
@@ -39,6 +44,13 @@ public:
     [[nodiscard]] std::span<const AnimationEvent> Events() const override;
     void Clear() override;
 
+    void SetRevisionForTesting(AnimatorHandle handle, std::uint64_t revision) noexcept;
+    void SetNextIdentityForTesting(std::uint64_t id, std::uint32_t generation) noexcept;
+    void SetFractionalMicrosecondsForTesting(AnimatorHandle handle, double fractional_microseconds) noexcept;
+    [[nodiscard]] double FractionalMicrosecondsForTesting(AnimatorHandle handle) const noexcept;
+    [[nodiscard]] bool HasExactFractionalMicrosecondsForTesting(AnimatorHandle handle) const noexcept;
+    [[nodiscard]] std::array<std::uint64_t, 17> ExactFractionalMicrosecondsForTesting(AnimatorHandle handle) const noexcept;
+
 private:
     struct AnimatorRecord
     {
@@ -49,6 +61,7 @@ private:
         AnimatorPlaybackState playback_state = AnimatorPlaybackState::Stopped;
         PoseState pose_state = PoseState::Clean;
         AnimatorPlayback playback{};
+        std::array<std::uint64_t, 17> exact_fractional_microseconds{};
         std::optional<CrossfadeState> crossfade{};
         PoseBuffer cached_pose{};
         std::uint64_t revision = 0;
@@ -62,10 +75,13 @@ private:
     [[nodiscard]] std::vector<AnimatorInstanceId> BuildAnimatorWorkList() const;
     [[nodiscard]] PoseBuffer BuildPoseBuffer(const AnimatorRecord& animator) const;
     [[nodiscard]] foundation::Result<PoseBuffer> EvaluatePose(const AnimatorRecord& animator);
-    [[nodiscard]] foundation::Result<void> PublishPose(const AnimatorRecord& animator);
-    void AdvancePlayback(AnimatorRecord& animator, FrameDuration delta);
-    void AdvanceCrossfade(AnimatorRecord& animator, FrameDuration delta);
-    void QueueEvent(AnimatorInstanceId animator, std::string name, float time);
+    [[nodiscard]] foundation::Result<void> PublishPose(std::shared_ptr<const PoseBuffer> pose);
+    [[nodiscard]] foundation::Result<void> AdvancePlayback(AnimatorRecord& animator, FrameDuration delta);
+    [[nodiscard]] foundation::Result<void> AdvanceCrossfade(AnimatorRecord& animator, FrameDuration delta);
+    void QueueEvent(AnimatorInstanceId animator, std::string_view name, float time) noexcept;
+    [[nodiscard]] foundation::Result<std::uint64_t> NextRevision(const AnimatorRecord& animator) const;
+    [[nodiscard]] foundation::Result<void> ValidateSkeleton(const SkeletonDesc& desc) const;
+    [[nodiscard]] foundation::Result<void> ValidateClip(const AnimationClipDesc& desc) const;
 
     AnimationOptions options_{};
     AnimationDependencies dependencies_{};
@@ -74,6 +90,10 @@ private:
     std::unordered_map<SkeletonId, SkeletonDesc> skeletons_;
     std::unordered_map<AnimationClipId, AnimationClipDesc> clips_;
     std::unordered_map<AnimatorInstanceId, AnimatorRecord> animators_;
+    static constexpr std::size_t kEventNameCapacity = 32;
     std::vector<AnimationEvent> events_;
+    std::size_t event_count_ = 0;
+    bool event_storage_ready_ = false;
+    bool registries_frozen_ = false;
 };
 } // namespace epidemic::runtime::animation

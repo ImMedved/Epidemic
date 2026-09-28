@@ -12,4 +12,4 @@ target_link_libraries(EpidemicRuntimeSimulationTests
 )
 
 epidemic_configure_target(EpidemicRuntimeSimulationTests)
-add_test(NAME EpidemicRuntimeSimulationTests COMMAND EpidemicRuntimeSimulationTests)
+epidemic_add_test(EpidemicRuntimeSimulationTests)

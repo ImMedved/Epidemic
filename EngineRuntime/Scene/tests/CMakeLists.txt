@@ -11,4 +11,4 @@ target_include_directories(EpidemicRuntimeSceneTests PRIVATE
 )
 
 epidemic_configure_target(EpidemicRuntimeSceneTests)
-add_test(NAME EpidemicRuntimeSceneTests COMMAND EpidemicRuntimeSceneTests)
+epidemic_add_test(EpidemicRuntimeSceneTests)

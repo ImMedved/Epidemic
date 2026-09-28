@@ -2,38 +2,55 @@
 
 ## Назначение
 
-Diagnostics делает состояние низкого слоя наблюдаемым: пишет structured log messages, считает события, измеряет scopes и присваивает понятные имена потокам. Работа движка не должна зависеть от конкретного output sink.
+Diagnostics делает работу EngineBase наблюдаемой через structured logging, числовые counters, scope profiling и диагностические имена потоков. Diagnostics не владеет authoritative engine/game state и не используется как event bus, control channel или условие успешности engine mutation.
 
-## Модель
+## Logging
 
-`ILogger` принимает `LogMessage` с уровнем, module и текстом. `ConsoleLogger` является базовой реализацией для консоли и файла. `DiagnosticsCounters` хранит именованные counters. `IProfileCollector` принимает `ProfileEvent`, а `ProfileScope` формирует RAII-измерение. Thread context helpers устанавливают диагностическое имя текущего потока.
+`ILogger` является безопасной публичной границей. Все `Log`/`Trace`/`Debug`/`Info`/`Warn`/`Error`/`Fatal` вызовы являются `noexcept`: исключение конкретного sink перехватывается внутри `ILogger` и не может заменить исходную ошибку либо изменить control flow движка.
 
-Diagnostics не определяет gameplay telemetry и не хранит бизнес-аналитику игры. Его события относятся к работе engine/runtime.
+Конкретный sink реализует private virtual `Write`. `ConsoleLogger` пишет в stdout и best-effort зеркалирует строку в `logs/epidemic.log`. Через `SetLoggingEnabled(false)` dispatch можно отключить полностью; пропущенные записи не replay-ятся после повторного включения.
 
-## Использование
+`LogMessage` заимствует module/category/message только на время синхронного вызова. `thread_name` хранится как owning `std::string`.
 
-Код получает `ILogger` через service container и логирует на границах операции: initialization, recoverable failure, shutdown и изменение важного состояния. Горячие внутренние циклы не должны создавать большие строки каждый кадр без необходимости.
+## Counters
 
-Profiling scope используется вокруг значимой операции:
+`DiagnosticsCounters` хранит фиксированный массив атомарных `int64_t`. `Increment` и `Decrement` используют saturating arithmetic и не wrap-around при достижении `INT64_MIN/MAX`. `CounterId::Count` и поврежденные enum values являются invalid: mutation для них является no-op, `Get` возвращает `0`.
+
+Counters предназначены только для наблюдения. Они не являются revision, generation, ownership token или механизмом синхронизации.
+
+## Profiling
+
+`SetProfileCollector` задает process-wide collector для новых scopes. `SetProfilingEnabled(false)` отключает создание profiling events; disabled path возвращается до копирования имени scope и не делает диагностических allocations.
+
+`ProfileScope` копирует имя scope и захватывает `shared_ptr` на текущий collector при создании. Замена global collector во время уже активного scope не перенаправляет его событие. Деструктор `ProfileScope` всегда `noexcept`, работает на normal return и exception unwinding и подавляет исключения collector, сохраняя исходную ошибку.
+
+`InMemoryProfileCollector::Snapshot()` возвращает detached copy диагностических samples. Это не persistence snapshot и restore API у Diagnostics отсутствует.
+
+Пример:
 
 ```cpp
-epidemic::diagnostics::ProfileScope scope(
-    collector,
-    "Resources.ProcessPendingLoads");
+epidemic::diagnostics::SetProfileCollector(collector);
+epidemic::diagnostics::SetProfilingEnabled(true);
+{
+    epidemic::diagnostics::ProfileScope scope("Resources.ProcessPendingLoads");
+    ProcessPendingLoads();
+}
 ```
 
-Counters подходят для количества queued events, processed jobs, failed loads и других агрегатов, которые не требуют отдельной записи на каждое событие.
+## Thread context
 
-## Ограничения и стабильность
+`SetCurrentThreadName` меняет только `thread_local` имя текущего потока. `GetCurrentThreadName` возвращает owning `std::string`, поэтому полученное значение не становится dangling после последующего rename или завершения исходного потока.
 
-Отключение profiling collector или сокращение logger output не должно менять поведение программы. Diagnostics не владеет authoritative state и не используется как канал связи между modules. Публичные interfaces стабильны; новые sinks и collectors можно добавлять без их изменения.
+## Threading
+
+Counters и enable flags атомарны. Global collector защищен mutex. `InMemoryProfileCollector` и `ConsoleLogger` сериализуют доступ к внутреннему состоянию. Thread names являются `thread_local`.
+
+Полная cross-module concurrency qualification выполняется в Goal 6; локальный Diagnostics audit фиксирует только собственные synchronization contracts.
 
 ## Карта публичных заголовков
 
-Этот раздел служит быстрым индексом объявлений. Семантика и инварианты описаны выше; точные сигнатуры остаются источником истины в public headers.
-
 - `console_logger.h`: `ConsoleLogger`.
-- `counters.h`: `CounterId`, `DiagnosticsCounters`.
-- `logger.h`: `LogLevel`, `LogMessage`, `ILogger`.
+- `counters.h`: `CounterId`, `DiagnosticsCounters`, counter helpers.
+- `logger.h`: `LogLevel`, `LogMessage`, `ILogger`, logging enable state.
 - `profiling.h`: `ProfileEvent`, `IProfileCollector`, `InMemoryProfileCollector`, `ProfileScope`.
-- `thread_context.h`: factory-функции или backend implementation без отдельного публичного типа.
+- `thread_context.h`: current-thread diagnostic name helpers.

@@ -1,0 +1,3281 @@
+{
+  "anchors": {
+    "06665ae70320d982": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:520::[[nodiscard]] bool TestUpdateMissingLazyRuleRejected()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:530::return !commit && commit.GetError().HasCode(\"persistence.lazy_rule_not_found\") && store.GetRevision() == 0u &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "06b605441e1b9d2a": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:59::## Dependency manifest audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:681::return canonical == same && dependency == same_dependency && type == same_type;",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:681::return canonical == same && dependency == same_dependency && type == same_type;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "07238383d4fe70bf": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:547::[[nodiscard]] bool TestArchiveStructuralAndReaderFailuresAreControlled()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:599::return !missing && missing.GetError().HasCode(\"serialization.field_missing\") && !wrong_kind &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "08536b65f1b1a214": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1018::[[nodiscard]] bool TestPrimitiveDocumentRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1037::return document.Value().IsValid() && document.Value().GetTypeId() == Id(\"serialization.primitive\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "0af2eb7ffefaa137": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:27::## State, identities and derived ownership",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:1318::if (!(type == same_type) || !(dependency == same_dependency) || !(handle == same_handle) || !(lease == same_lease))",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:1318::if (!(type == same_type) || !(dependency == same_dependency) || !(handle == same_handle) || !(lease == same_lease))"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "0b98d4b8e67b2ccf": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:65::## Query and lifecycle audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:312::bool TestAssetLocationResolverReturnsRegisteredLocation()",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:329::return refetched && refetched.Value() == metadata.location;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "0d6ef8701d069b11": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:7::## Объекты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1321::!(inventory == InventoryPlacement{inventory}) || !(equipped == EquippedPlacement{equipped}) ||",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1321::!(inventory == InventoryPlacement{inventory}) || !(equipped == EquippedPlacement{equipped}) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "0e73f0ed9cbecf4a": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:7::## Модель",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:1075::const auto at_location = services.Value().query->FindByLocation(location);",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:1075::const auto at_location = services.Value().query->FindByLocation(location);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "0edc90c695b4cff4": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1418::[[nodiscard]] bool TestSerializationServicesFactoryCreatesUsableServices()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1438::return reader && reader.Value()->ReadString(\"name\").Value() == \"factory\";"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "0ff3a2b6042db618": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:637::[[nodiscard]] bool TestFinalizeValidatesMetadataAndPreservesWriterOnFailure()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:652::return valid && valid.Value().IsValid();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "10230c704b0ffd57": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1333::return static_cast<bool>(epidemic::runtime::ValidateWorldObjectInvariant(record, runtime, runtime, runtime));",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1333::return static_cast<bool>(epidemic::runtime::ValidateWorldObjectInvariant(record, runtime, runtime, runtime));"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "11763d5fc9344a91": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:7::## Объекты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1322::!(hidden == HiddenPlacement{hidden}) || !(destroyed == DestroyedPlacement{destroyed}) ||",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1322::!(hidden == HiddenPlacement{hidden}) || !(destroyed == DestroyedPlacement{destroyed}) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "128c1859ed7026ef": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:547::[[nodiscard]] bool TestArchiveStructuralAndReaderFailuresAreControlled()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:599::return !missing && missing.GetError().HasCode(\"serialization.field_missing\") && !wrong_kind &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "134d5b82878230b9": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:7::## Модель",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:1033::const ObjectProtectionMask protection{epidemic::runtime::ToProtectionMask(ObjectProtectionFlags::PreventDecay)};",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:1033::const ObjectProtectionMask protection{epidemic::runtime::ToProtectionMask(ObjectProtectionFlags::PreventDecay)};"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "146adb21842f8449": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:51::## Registration and validation audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:210::bool TestCatalogSeal()",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:221::return catalog.IsSealed() && after_seal.has_value() && !rejected && rejected.GetError().HasCode(\"asset.catalog_sealed\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "14d45bcaf812759a": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:13::## Public mutation and query contract",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:489::[[nodiscard]] bool TestMemoryBudgetFailureRollsBackPayload()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:504::return handle && processed && processed.Value().failed_resources == 1u && slot && slot->state == ResourceState::Failed &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "156ee0e33084be16": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1323::!(location == WorldLocation{location}) || !(region_descriptor == RegionDescriptor{region_descriptor}) ||",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1323::!(location == WorldLocation{location}) || !(region_descriptor == RegionDescriptor{region_descriptor}) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "15b8a0f4f0097662": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:547::[[nodiscard]] bool TestArchiveStructuralAndReaderFailuresAreControlled()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:599::return !missing && missing.GetError().HasCode(\"serialization.field_missing\") && !wrong_kind &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "16b99a54af3ca041": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:7::## Модель",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:268::[[nodiscard]] bool TestPayloadAndTypedProtectionContracts()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:280::return payload.IsValid() && !invalid_payload.IsValid() && HasProtectionFlag(mask, ObjectProtectionFlags::PreventTheft) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "16c630e44c5850dc": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:147::const auto initial = runtime.GetChunkSnapshot(ChunkId{15});",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:147::const auto initial = runtime.GetChunkSnapshot(ChunkId{15});"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "16ffc573bf46c74e": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:51::## Registration and validation audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:332::bool TestCanonicalPaths()",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:343::return stored.has_value() && stored->location.path == \"items/potato.itemdef\";"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "173dcd58e4ddcea8": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:575::[[nodiscard]] bool TestUpsertThenRemoveLazyRuleInOneTransaction()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:585::return commit && store.GetRevision() == 1u && store.ListLazyRules().empty();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "17ded4ada564e618": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:27::## State, identities and derived ownership",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:266::[[nodiscard]] bool TestBasicTypesAndStateTransitions()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:271::return !handle.IsValid() && !request.resource_id.IsValid() && result &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "1a5d676c13d7522b": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:655::[[nodiscard]] bool TestArchiveAllocationFailureAtomicity()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:745::return recovered && recovered.Value().IsValid();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "1bb53dcda63333b1": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:33::## External loader boundary and accepted-once semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:287::[[nodiscard]] bool TestLoaderRegistryNonOwningContract()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:294::return first && registry.FindLoader(loader.GetResourceType()) == &loader && registry.HasLoader(loader.GetResourceType()) && !second &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "1c55c01ea10de0dc": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:876::[[nodiscard]] bool TestTopologyFreezeContract()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:894::return state_change && region_after.GetError().HasCode(\"world.topology_frozen\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "1d0103e95e3a065a": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1442::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IArchiveFactory>);",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1442::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IArchiveFactory>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "1e8adf9a6cd102af": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1326::[[nodiscard]] bool TestArraySlotsAreWriteOnceAndComplete()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1335::if (duplicate || !duplicate.GetError().HasCode(\"serialization.duplicate_array_element\"))"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "1eb2553907af9385": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:51::## Registration and validation audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:681::return canonical == same && dependency == same_dependency && type == same_type;",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:681::return canonical == same && dependency == same_dependency && type == same_type;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "1ec6c3f9e4905ff3": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1055::[[nodiscard]] bool TestNestedObjectAndArrayRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1082::return children_count && children_count.Value() == 2u && reader.BeginArrayElement(1) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "1ec8f4ff94f4ac20": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:987::[[nodiscard]] bool TestSerializeToDocumentAllocationFailureAtomicity()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1015::return recovered && recovered.Value().IsValid();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "20f69459182c9068": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:608::[[nodiscard]] bool TestDeleteObjectIsAtomicTombstoneOperation()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:629::return deleted && committed && !found_object && found_tombstone &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "21b972ab69903435": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:33::## External loader boundary and accepted-once semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:1086::[[nodiscard]] bool TestLoaderRegistryFreezeAndEmptyQueueBoundaries()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:1098::return empty && empty.Value().attempted_jobs == 0u && empty.Value().processed_jobs == 0u;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "22e234080e5c23c5": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1135::[[nodiscard]] bool TestQueriesAreDetachedAndDeterministicallyOrdered()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1173::return stored && stored->revision == 1u && ordered(region) && ordered(chunk) && ordered(reality);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "250eec283c8a413d": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1135::[[nodiscard]] bool TestQueriesAreDetachedAndDeterministicallyOrdered()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1173::return stored && stored->revision == 1u && ordered(region) && ordered(chunk) && ordered(reality);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "252398d081709181": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:916::[[nodiscard]] bool TestZoneOverrideCandidateValidationIsAtomic()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:926::return !commit && commit.GetError().HasCode(\"persistence.invalid_snapshot\") && transaction->GetState() == SaveTransactionState::Failed &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "25f1a1b839699cae": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1326::[[nodiscard]] bool TestArraySlotsAreWriteOnceAndComplete()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1335::if (duplicate || !duplicate.GetError().HasCode(\"serialization.duplicate_array_element\"))"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "2871f95469097c83": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1446::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IMigrationRegistry>);",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1446::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IMigrationRegistry>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "288d8fb8c0d33b80": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:1023::static_assert(std::has_virtual_destructor_v<epidemic::runtime::ISaveTransaction>);",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:1023::static_assert(std::has_virtual_destructor_v<epidemic::runtime::ISaveTransaction>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "28ae564a6344588d": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1198::[[nodiscard]] bool TestMigrationRegistryFindsExactAndChainedPaths()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1212::return exact == one_to_two && path && path.Value().size() == 2u && same && same.Value().empty();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "2cbb6cfdd830f6c5": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:27::## State, identities and derived ownership",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:298::[[nodiscard]] bool TestRequestQueuesAndProcessLoadsPayload()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:317::return processed && processed.Value().processed_jobs == 1u && processed.Value().loaded_resources == 1u && loader.load_count() == 1 &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "2d4e5bd87d983bb4": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:876::[[nodiscard]] bool TestTopologyFreezeContract()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:894::return state_change && region_after.GetError().HasCode(\"world.topology_frozen\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "2e21fc7186cac499": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:33::## External loader boundary and accepted-once semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:298::[[nodiscard]] bool TestRequestQueuesAndProcessLoadsPayload()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:317::return processed && processed.Value().processed_jobs == 1u && processed.Value().loaded_resources == 1u && loader.load_count() == 1 &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "2ec7f2b5522be461": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:1076::const auto tombstones = services.Value().query->ListTombstones();",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:1076::const auto tombstones = services.Value().query->ListTombstones();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "37e7280ad6adbde9": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:7::## Scope and ownership",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:658::static_assert(std::has_virtual_destructor_v<IAssetCatalogWriter>);",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:658::static_assert(std::has_virtual_destructor_v<IAssetCatalogWriter>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "38322a1f4d669572": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:7::## Модель",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:1034::if (protection.value == 0u || !(protection == ObjectProtectionMask{protection.value}))",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:1034::if (protection.value == 0u || !(protection == ObjectProtectionMask{protection.value}))"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "38367b8804f4309f": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1289::const auto region = epidemic::runtime::GetPlacementRegion(surface_variant);",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1289::const auto region = epidemic::runtime::GetPlacementRegion(surface_variant);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "386fa83fd22883ed": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:876::[[nodiscard]] bool TestTopologyFreezeContract()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:894::return state_change && region_after.GetError().HasCode(\"world.topology_frozen\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "39168528bff0ac51": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:400::[[nodiscard]] bool TestRichTombstonesAndZoneOverrides()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:423::return store.IsTombstoned(PersistentObjectId{1001}) && found_tombstone && found_tombstone->reason == Id(\"cleanup.decay\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "3bf73d88313f26cc": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:7::## Объекты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1320::if (!(surface == WorldSurfacePlacement{surface}) || !(container == ContainerPlacement{container}) ||",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1320::if (!(surface == WorldSurfacePlacement{surface}) || !(container == ContainerPlacement{container}) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "3ce0f011859e4bb9": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:27::## State, identities and derived ownership",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:761::[[nodiscard]] bool TestResourceLeasePreventsCrossConsumerDoubleRelease()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:784::return release_first && !release_first_again &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "3ceb1bfd9a45e7a3": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:7::## Модель",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:1024::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IPersistentObjectStore>);",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:1024::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IPersistentObjectStore>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "3d7377f422f50efc": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1055::[[nodiscard]] bool TestNestedObjectAndArrayRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1082::return children_count && children_count.Value() == 2u && reader.BeginArrayElement(1) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "3d7dd2a0452a9277": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:876::[[nodiscard]] bool TestTopologyFreezeContract()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:894::return state_change && region_after.GetError().HasCode(\"world.topology_frozen\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "3e21f3b99d080ce3": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:987::[[nodiscard]] bool TestInMemoryBackendStrongCommitUnderAllocationFaults()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:1018::return after_success && SameSnapshot(after_success.Value(), next);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "40d94f377320a676": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:7::## Объекты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1135::[[nodiscard]] bool TestQueriesAreDetachedAndDeterministicallyOrdered()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1173::return stored && stored->revision == 1u && ordered(region) && ordered(chunk) && ordered(reality);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "426925a9f27dfe12": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:33::## External loader boundary and accepted-once semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:1305::if (payload.GetSizeBytes() != 2u || payload.Bytes().size() != 2u)",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:1305::if (payload.GetSizeBytes() != 2u || payload.Bytes().size() != 2u)"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "427603039ed1e2ba": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:13::## Public mutation and query contract",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:1280::[[nodiscard]] bool TestFactoryCreatesUsableServices()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:1295::return handle && processed && services.Value().manager->IsReady(handle.Value().resource);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "434b9081faa21e74": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:17::## Materialization",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1325::!(materialization == MaterializationRequest{materialization}) || !(token == DemotionCommitToken{token}) ||",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1325::!(materialization == MaterializationRequest{materialization}) || !(token == DemotionCommitToken{token}) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "4379437fe264a433": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1245::[[nodiscard]] bool TestApplyMigrationsBuildsNewDocument()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1282::return original_reader && migrated_reader && original_reader.Value()->ReadString(\"name\").Value() == \"original\" &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "448ff66780eb21c5": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1018::[[nodiscard]] bool TestPrimitiveDocumentRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1037::return document.Value().IsValid() && document.Value().GetTypeId() == Id(\"serialization.primitive\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "44e4f40c850795cd": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:354::[[nodiscard]] bool TestLazyRuleIdQueries()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:366::return by_id && by_id->rule_id == LazyRuleId{5002} && by_id->revision == 1u && by_target.size() == 2u &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "4500897bc90a36f4": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1055::[[nodiscard]] bool TestNestedObjectAndArrayRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1082::return children_count && children_count.Value() == 2u && reader.BeginArrayElement(1) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "477a801e2770d49d": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:51::## Registration and validation audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:667::if (canonical.path != \"items/potato.itemdef\" || !epidemic::runtime::IsValidAssetLocation(canonical) ||",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:667::if (canonical.path != \"items/potato.itemdef\" || !epidemic::runtime::IsValidAssetLocation(canonical) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "47810d10d66f0d25": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:33::## External loader boundary and accepted-once semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:1300::static_assert(std::has_virtual_destructor_v<IResourceLoaderRegistry>);",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:1300::static_assert(std::has_virtual_destructor_v<IResourceLoaderRegistry>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "4c112e722fa6d6da": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:27::## State, identities and derived ownership",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:1318::if (!(type == same_type) || !(dependency == same_dependency) || !(handle == same_handle) || !(lease == same_lease))",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:1318::if (!(type == same_type) || !(dependency == same_dependency) || !(handle == same_handle) || !(lease == same_lease))"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "4c7fc69b7ea53e99": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:51::## Registration and validation audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:670::!epidemic::runtime::IsValidAssetState(AssetState::Validated) ||",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:670::!epidemic::runtime::IsValidAssetState(AssetState::Validated) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "4dbaa509d4e31f1a": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:51::## Registration and validation audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:332::bool TestCanonicalPaths()",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:343::return stored.has_value() && stored->location.path == \"items/potato.itemdef\";"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "4eee56d3beee924e": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:7::## Объекты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:839::const auto services = CreateWorldServices();",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:839::const auto services = CreateWorldServices();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "5196cf09d01c522e": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1396::[[nodiscard]] bool TestRegistriesCanFreeze()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1412::return registered_serializer && frozen_serializer && serializers.IsFrozen() && !rejected_serializer &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "527b731acb1f52af": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:13::## Public mutation and query contract",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:321::[[nodiscard]] bool TestProcessBudgetLimitsJobs()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:336::return first && second && processed && processed.Value().processed_jobs == 1u && loader.load_count() == 1 &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "5384f77d2b95cd80": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1211::[[nodiscard]] bool TestChunkTransitionRejectsOutOfDomainStates()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1231::return !rejected && after && after.Value().state == before.Value().state &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "53a62e217de54b2e": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1018::[[nodiscard]] bool TestPrimitiveDocumentRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1037::return document.Value().IsValid() && document.Value().GetTypeId() == Id(\"serialization.primitive\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "55131c84bcde0600": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1326::[[nodiscard]] bool TestArraySlotsAreWriteOnceAndComplete()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1335::if (duplicate || !duplicate.GetError().HasCode(\"serialization.duplicate_array_element\"))"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "57902774e6e56bae": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:65::## Query and lifecycle audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:503::bool TestSealIdempotenceAndEmptyCatalogContracts()",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:514::return first && second && catalog.IsSealed();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "58815928bb667df0": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:7::## Модель",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:1025::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IPersistenceQuery>);",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:1025::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IPersistenceQuery>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "59091eef89718772": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:7::## Модель",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:301::[[nodiscard]] bool TestRollbackDiscardsStagedMutations()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:312::return transaction->GetState() == SaveTransactionState::RolledBack && !store.FindObject(PersistentObjectId{1001}) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "59259aae5c3c1076": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:13::## Public mutation and query contract",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:266::[[nodiscard]] bool TestBasicTypesAndStateTransitions()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:271::return !handle.IsValid() && !request.resource_id.IsValid() && result &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "59bf4a3dd51d44d5": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:17::## Materialization",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1326::!(snapshot == DemotionSnapshot{snapshot}) || !(demotion == DemotionRequest{demotion}) ||",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1326::!(snapshot == DemotionSnapshot{snapshot}) || !(demotion == DemotionRequest{demotion}) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "5b1451f2b2c4ed8f": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:655::[[nodiscard]] bool TestArchiveAllocationFailureAtomicity()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:745::return recovered && recovered.Value().IsValid();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "5b47a8e4c371b344": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1055::[[nodiscard]] bool TestNestedObjectAndArrayRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1082::return children_count && children_count.Value() == 2u && reader.BeginArrayElement(1) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "5bce4578fc21820b": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1448::static_assert(std::has_virtual_destructor_v<epidemic::runtime::ISerializerRegistry>);",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1448::static_assert(std::has_virtual_destructor_v<epidemic::runtime::ISerializerRegistry>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "5de74158ee6dd0f4": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:51::## Registration and validation audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:69::bool TestDefaultMetadataState()",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:72::return !metadata.id.IsValid() && !metadata.type.IsValid() && metadata.location.kind == AssetLocationKind::FilePath &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "5fb673ffe7714512": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:17::## Materialization",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1176::[[nodiscard]] bool TestMaterializeAndDemoteCommandsRequireExpectedRevision()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1206::return !materialize && materialize.GetError().HasCode(\"world.expected_revision_required\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "5ff5081733d48ef1": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:65::## Query and lifecycle audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:246::bool TestFindByTypeAndTagWork()",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:273::return item_type_matches.size() == 2 && item_type_matches[0].id == expected_item_type[0] &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "603b27c79e14c6c4": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:7::## Объекты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1320::if (!(surface == WorldSurfacePlacement{surface}) || !(container == ContainerPlacement{container}) ||",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1320::if (!(surface == WorldSurfacePlacement{surface}) || !(container == ContainerPlacement{container}) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "62956b0acef1a927": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1198::[[nodiscard]] bool TestMigrationRegistryFindsExactAndChainedPaths()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1212::return exact == one_to_two && path && path.Value().size() == 2u && same && same.Value().empty();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "636e48255b70834f": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:7::## Объекты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1272::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IWorldQuery>);",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1272::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IWorldQuery>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "6427e88432eb35d8": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:7::## Объекты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:529::const auto forged_destroyed = runtime.Apply(ChangePlacementCommand{",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:529::const auto forged_destroyed = runtime.Apply(ChangePlacementCommand{"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "649e7cc6afd92242": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1396::[[nodiscard]] bool TestRegistriesCanFreeze()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1412::return registered_serializer && frozen_serializer && serializers.IsFrozen() && !rejected_serializer &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "64b2fd94195b70c3": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:7::## Объекты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:958::[[nodiscard]] bool TestPromotionIndexFailurePreservesObjectAndDemotionTokens()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:973::return !promoted && promoted.GetError().HasCode(\"world.allocation_failed\") && before && after && *before == *after &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "6822ea6ac048185e": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:33::## External loader boundary and accepted-once semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:287::[[nodiscard]] bool TestLoaderRegistryNonOwningContract()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:294::return first && registry.FindLoader(loader.GetResourceType()) == &loader && registry.HasLoader(loader.GetResourceType()) && !second &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "684b7e1a0742394a": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:13::## Public mutation and query contract",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:839::[[nodiscard]] bool TestMemoryStatisticsTrackUnreferencedCache()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:860::return ready.ready_bytes == 20u && ready.cached_unreferenced_bytes == 0u && ready.resource_count == 1u &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "6a29754411247e0d": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1149::[[nodiscard]] bool TestSerializerRejectsWrongTypeAndMissingFields()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1180::return !wrong_type && wrong_type.GetError().HasCode(\"serialization.type_mismatch\") && !missing_field &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "6afa5f953871b428": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:33::## External loader boundary and accepted-once semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:298::[[nodiscard]] bool TestRequestQueuesAndProcessLoadsPayload()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:317::return processed && processed.Value().processed_jobs == 1u && processed.Value().loaded_resources == 1u && loader.load_count() == 1 &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "6b0eba1e89c6562b": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:987::[[nodiscard]] bool TestSerializeToDocumentAllocationFailureAtomicity()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1015::return recovered && recovered.Value().IsValid();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "6b6d5840bc22393c": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:370::[[nodiscard]] bool TestLazyRuleUpdateRemoveAndDueQuery()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:395::return due_before_update.size() == 1u && due_before_update.front().rule_id == LazyRuleId{5001} &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "6ca7e1ea3d929716": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1055::[[nodiscard]] bool TestNestedObjectAndArrayRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1082::return children_count && children_count.Value() == 2u && reader.BeginArrayElement(1) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "6cba12d3ace4f283": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:7::## Объекты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1279::!epidemic::runtime::IsValidObjectRealityLevel(ObjectRealityLevel::Logical) ||",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1279::!epidemic::runtime::IsValidObjectRealityLevel(ObjectRealityLevel::Logical) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "6d675bc3f0d6be41": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:7::## Объекты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:186::bool TestFindObjectReturnsSnapshot()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:186::bool TestFindObjectReturnsSnapshot()"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "6e7ca49dc24b28fb": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:13::## Public mutation and query contract",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:1318::if (!(type == same_type) || !(dependency == same_dependency) || !(handle == same_handle) || !(lease == same_lease))",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:1318::if (!(type == same_type) || !(dependency == same_dependency) || !(handle == same_handle) || !(lease == same_lease))"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "70600b95134bc261": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1113::[[nodiscard]] bool TestSerializerExecutesRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1132::return deserialize && target.name == source.name && target.count == source.count;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "72e5c7e6e72eae02": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:547::[[nodiscard]] bool TestArchiveStructuralAndReaderFailuresAreControlled()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:599::return !missing && missing.GetError().HasCode(\"serialization.field_missing\") && !wrong_kind &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "73202027e43ec08d": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1355::[[nodiscard]] bool TestDeserializeObjectIsFailureAtomic()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1377::return !thrown && thrown.GetError().HasCode(\"serialization.serializer.exception\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "74dee2a01e95afcf": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:7::## Модель",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:696::[[nodiscard]] bool TestRevisionOverflowRejected()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:708::return !commit && commit.GetError().HasCode(\"persistence.revision_overflow\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "75a7320df7873957": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1018::[[nodiscard]] bool TestPrimitiveDocumentRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1037::return document.Value().IsValid() && document.Value().GetTypeId() == Id(\"serialization.primitive\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "770123acb7b8ba50": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:13::## Public mutation and query contract",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:1101::[[nodiscard]] bool TestEvictingRetryKeepsCompletedPrefix()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:1118::return !while_evicting && while_evicting.GetError().HasCode(\"resource.evicting\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "77fadf870e96a8ca": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1271::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IChunkRegistry>);",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1271::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IChunkRegistry>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "7856c135a45e31f7": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:27::## State, identities and derived ownership",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:811::[[nodiscard]] bool TestUnknownAndStaleHandles()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:832::return released && !double_release && double_release.GetError().HasCode(\"resource.acquisition_underflow\") && evicted &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "787e2a7a40ca6c0f": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1113::[[nodiscard]] bool TestSerializerExecutesRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1132::return deserialize && target.name == source.name && target.count == source.count;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "78a70cce08464ba3": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:453::[[nodiscard]] bool TestBackendFlushFailureLeavesStoreUnchanged()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:474::return !commit && commit.GetError().HasCode(\"persistence.flush_failed\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "7986b1c1c0c08f41": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1450::const SerializedDocument empty{};",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1450::const SerializedDocument empty{};"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "7a408b3ca5c68bc6": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:400::[[nodiscard]] bool TestRichTombstonesAndZoneOverrides()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:423::return store.IsTombstoned(PersistentObjectId{1001}) && found_tombstone && found_tombstone->reason == Id(\"cleanup.decay\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "7b8593f2163f0bf2": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1055::[[nodiscard]] bool TestNestedObjectAndArrayRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1082::return children_count && children_count.Value() == 2u && reader.BeginArrayElement(1) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "7bd54262eec254d8": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1018::[[nodiscard]] bool TestPrimitiveDocumentRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1037::return document.Value().IsValid() && document.Value().GetTypeId() == Id(\"serialization.primitive\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "7cbbdb10e66f3a4a": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:748::[[nodiscard]] bool TestSerializerRegistryAndTypedBoundaryValidation()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:806::return !wrong_type && wrong_type.GetError().HasCode(\"serialization.type_mismatch\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "7d57ded577de76dd": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1418::[[nodiscard]] bool TestSerializationServicesFactoryCreatesUsableServices()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1438::return reader && reader.Value()->ReadString(\"name\").Value() == \"factory\";"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "7d92070b2512e562": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:950::[[nodiscard]] bool TestMigrationVersionValidationAndPathAllocationAtomicity()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:984::return recovery && recovery.Value().size() == 2u;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "7e109513de2678db": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:876::[[nodiscard]] bool TestTopologyFreezeContract()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:894::return state_change && region_after.GetError().HasCode(\"world.topology_frozen\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "7ff813e954dc14b6": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:748::[[nodiscard]] bool TestSerializerRegistryAndTypedBoundaryValidation()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:806::return !wrong_type && wrong_type.GetError().HasCode(\"serialization.type_mismatch\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "7ffbc7598b46aa68": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:7::## Модель",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:1026::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IPersistenceStore>);",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:1026::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IPersistenceStore>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "80bf7287169cb742": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:13::## Public mutation and query contract",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:266::[[nodiscard]] bool TestBasicTypesAndStateTransitions()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:271::return !handle.IsValid() && !request.resource_id.IsValid() && result &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "8396c4b61da44532": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:284::[[nodiscard]] bool TestTransactionCommitPersistsObjectsAndRevision()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:297::return upsert && commit && transaction->GetState() == SaveTransactionState::Committed && found && found->revision == 1u &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "852f765ea9617db3": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:655::[[nodiscard]] bool TestArchiveAllocationFailureAtomicity()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:745::return recovered && recovered.Value().IsValid();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "874ca9b4442b67c6": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:1027::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IDirtyTracker>);",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:1027::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IDirtyTracker>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "87b27bb9a709bac0": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:65::## Query and lifecycle audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:224::bool TestFindByIdReturnsSnapshot()",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:243::return refetched.has_value() && refetched->version == metadata.version && refetched->location.path == metadata.location.path;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "8a3dd7db69528aee": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:1085::if (!second || !second->RemoveZoneOverride(location) || !second->Commit())",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:1085::if (!second || !second->RemoveZoneOverride(location) || !second->Commit())"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "8c0a3a1fe135da84": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:7::## Объекты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1327::!(record == WorldObjectRecord{record}))",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1327::!(record == WorldObjectRecord{record}))"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "8ccd3acc3adefde9": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:51::## Registration and validation audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:666::const auto canonical = epidemic::runtime::CanonicalizeAssetLocation(location);",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:666::const auto canonical = epidemic::runtime::CanonicalizeAssetLocation(location);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "8d16fe30d12e75ec": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:634::[[nodiscard]] bool TestValidationRejectsInvalidRecords()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:649::return !object_result && object_result.GetError().HasCode(\"persistence.invalid_payload\") && !rule_result &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "8d842e4acd8f484d": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:7::## Объекты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1322::!(hidden == HiddenPlacement{hidden}) || !(destroyed == DestroyedPlacement{destroyed}) ||",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1322::!(hidden == HiddenPlacement{hidden}) || !(destroyed == DestroyedPlacement{destroyed}) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "8d9e5a56da811885": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:27::## State, identities and derived ownership",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:1335::const auto id = manager.GetResourceId(acquired.Value().resource);",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:1335::const auto id = manager.GetResourceId(acquired.Value().resource);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "9352c73a0473d3c1": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:400::[[nodiscard]] bool TestRichTombstonesAndZoneOverrides()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:423::return store.IsTombstoned(PersistentObjectId{1001}) && found_tombstone && found_tombstone->reason == Id(\"cleanup.decay\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "958bdfc6f6bcab82": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1198::[[nodiscard]] bool TestMigrationRegistryFindsExactAndChainedPaths()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1212::return exact == one_to_two && path && path.Value().size() == 2u && same && same.Value().empty();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "95be2f4c56f95568": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1326::[[nodiscard]] bool TestArraySlotsAreWriteOnceAndComplete()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1335::if (duplicate || !duplicate.GetError().HasCode(\"serialization.duplicate_array_element\"))"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "95d15c17fb6d6857": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:284::[[nodiscard]] bool TestTransactionCommitPersistsObjectsAndRevision()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:297::return upsert && commit && transaction->GetState() == SaveTransactionState::Committed && found && found->revision == 1u &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "975a0d561df6d58d": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:17::## Materialization",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1176::[[nodiscard]] bool TestMaterializeAndDemoteCommandsRequireExpectedRevision()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1206::return !materialize && materialize.GetError().HasCode(\"world.expected_revision_required\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "97eed344953706d9": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1355::[[nodiscard]] bool TestDeserializeObjectIsFailureAtomic()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1377::return !thrown && thrown.GetError().HasCode(\"serialization.serializer.exception\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "980bafb47be15dbe": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:27::## State, identities and derived ownership",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:761::[[nodiscard]] bool TestResourceLeasePreventsCrossConsumerDoubleRelease()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:784::return release_first && !release_first_again &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "991ee8a4e6151fc4": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:33::## External loader boundary and accepted-once semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:1086::[[nodiscard]] bool TestLoaderRegistryFreezeAndEmptyQueueBoundaries()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:1098::return empty && empty.Value().attempted_jobs == 0u && empty.Value().processed_jobs == 0u;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "9ae3c845f1963c5d": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1290::const auto chunk = epidemic::runtime::GetPlacementChunk(surface_variant);",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1290::const auto chunk = epidemic::runtime::GetPlacementChunk(surface_variant);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "9c2d4b2a80a9052a": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1018::[[nodiscard]] bool TestPrimitiveDocumentRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1037::return document.Value().IsValid() && document.Value().GetTypeId() == Id(\"serialization.primitive\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "9dba6ae138d8dfd8": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1445::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IMigration>);",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1445::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IMigration>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "9ee99dc03a58ba22": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1444::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IArchiveWriter>);",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1444::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IArchiveWriter>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "9f3053f1207bf5ef": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1211::[[nodiscard]] bool TestChunkTransitionRejectsOutOfDomainStates()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1231::return !rejected && after && after.Value().state == before.Value().state &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "a0179394c4127d40": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:65::## Query and lifecycle audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:246::bool TestFindByTypeAndTagWork()",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:273::return item_type_matches.size() == 2 && item_type_matches[0].id == expected_item_type[0] &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "a03fa9246926b216": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1418::[[nodiscard]] bool TestSerializationServicesFactoryCreatesUsableServices()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1438::return reader && reader.Value()->ReadString(\"name\").Value() == \"factory\";"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "a099614894ae2612": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:33::## External loader boundary and accepted-once semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:298::[[nodiscard]] bool TestRequestQueuesAndProcessLoadsPayload()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:317::return processed && processed.Value().processed_jobs == 1u && processed.Value().loaded_resources == 1u && loader.load_count() == 1 &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "a0c987e8a40c4669": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:916::[[nodiscard]] bool TestZoneOverrideCandidateValidationIsAtomic()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:926::return !commit && commit.GetError().HasCode(\"persistence.invalid_snapshot\") && transaction->GetState() == SaveTransactionState::Failed &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "a12c38985e389cd2": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:606::[[nodiscard]] bool TestDeepEmptyStructuresBytesAndNullRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:634::return read_bytes && read_bytes.Value() == bytes && is_null && is_null.Value() && reader.EndObject() && reader.EndObject();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "a151119b869c78d8": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:33::## External loader boundary and accepted-once semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:1302::static_assert(std::has_virtual_destructor_v<IResourcePayload>);",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:1302::static_assert(std::has_virtual_destructor_v<IResourcePayload>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "a35a367ce094d269": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:876::[[nodiscard]] bool TestTopologyFreezeContract()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:894::return state_change && region_after.GetError().HasCode(\"world.topology_frozen\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "a4529d2011d9770a": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:7::## Модель",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:1040::if (!(location == PersistenceLocation{location}))",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:1040::if (!(location == PersistenceLocation{location}))"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "a47ba144a07ca338": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1323::!(location == WorldLocation{location}) || !(region_descriptor == RegionDescriptor{region_descriptor}) ||",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1323::!(location == WorldLocation{location}) || !(region_descriptor == RegionDescriptor{region_descriptor}) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "a4ca8f03ff6b9cba": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1443::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IArchiveReader>);",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1443::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IArchiveReader>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "a501aabd6811aba5": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:7::## Scope and ownership",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:643::bool TestAssetServicesFactory()",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:652::return services.Value().catalog && services.Value().writer && services.Value().location_resolver &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "a67cf70946dd56a1": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:17::## Materialization",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:831::bool TestWorldLocationStoresRegionAndChunk()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:834::return location.region_id.IsValid() && location.chunk_id.IsValid();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "a6fd598e82cbb0ed": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1113::[[nodiscard]] bool TestSerializerExecutesRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1132::return deserialize && target.name == source.name && target.count == source.count;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "a7a8d73c6abe4178": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1471::if (serializer.GetCppType() != typeid(ProbeData))",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1471::if (serializer.GetCppType() != typeid(ProbeData))"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "a89cddb99a3426f0": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:7::## Объекты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1321::!(inventory == InventoryPlacement{inventory}) || !(equipped == EquippedPlacement{equipped}) ||",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1321::!(inventory == InventoryPlacement{inventory}) || !(equipped == EquippedPlacement{equipped}) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "a98b1cf8f2682a5f": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1018::[[nodiscard]] bool TestPrimitiveDocumentRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1037::return document.Value().IsValid() && document.Value().GetTypeId() == Id(\"serialization.primitive\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "a9df6ff064f8235c": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:400::[[nodiscard]] bool TestRichTombstonesAndZoneOverrides()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:423::return store.IsTombstoned(PersistentObjectId{1001}) && found_tombstone && found_tombstone->reason == Id(\"cleanup.decay\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "aaa8babdd4de6b51": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:17::## Materialization",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1326::!(snapshot == DemotionSnapshot{snapshot}) || !(demotion == DemotionRequest{demotion}) ||",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1326::!(snapshot == DemotionSnapshot{snapshot}) || !(demotion == DemotionRequest{demotion}) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "ab250d44c64d64c1": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:547::[[nodiscard]] bool TestArchiveStructuralAndReaderFailuresAreControlled()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:599::return !missing && missing.GetError().HasCode(\"serialization.field_missing\") && !wrong_kind &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "abcabd4399f8b01b": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:17::## Materialization",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:814::const auto token = runtime.IssueDemotionCommitToken(",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:814::const auto token = runtime.IssueDemotionCommitToken("
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "ac99988860174f7d": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:33::## External loader boundary and accepted-once semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:1305::if (payload.GetSizeBytes() != 2u || payload.Bytes().size() != 2u)",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:1305::if (payload.GetSizeBytes() != 2u || payload.Bytes().size() != 2u)"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "ad518df3d43272df": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:317::[[nodiscard]] bool TestConcurrentTransactionConflict()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:332::return first_upsert && first_commit && second_upsert && !second_commit &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "affcca23c4e1c4f9": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:1079::!services.Value().query->IsDirty(object.persistent_id))",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:1079::!services.Value().query->IsDirty(object.persistent_id))"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "b2c45a59b02c16fc": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:284::[[nodiscard]] bool TestTransactionCommitPersistsObjectsAndRevision()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:297::return upsert && commit && transaction->GetState() == SaveTransactionState::Committed && found && found->revision == 1u &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "b4a3f18304ae82e9": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:7::## Scope and ownership",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:681::return canonical == same && dependency == same_dependency && type == same_type;",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:681::return canonical == same && dependency == same_dependency && type == same_type;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "b53963cc127eeabe": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:17::## Materialization",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1274::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IObjectMaterializer>);",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1274::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IObjectMaterializer>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "b5ff4b6e992b6cac": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:317::[[nodiscard]] bool TestConcurrentTransactionConflict()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:332::return first_upsert && first_commit && second_upsert && !second_commit &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "b798e4bd58c580e7": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:89::bool TestRegisterAndFindRegion()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:89::bool TestRegisterAndFindRegion()"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "b7fde22f9603c689": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:33::## External loader boundary and accepted-once semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:287::[[nodiscard]] bool TestLoaderRegistryNonOwningContract()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:294::return first && registry.FindLoader(loader.GetResourceType()) == &loader && registry.HasLoader(loader.GetResourceType()) && !second &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "b819720510d395cb": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1018::[[nodiscard]] bool TestPrimitiveDocumentRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1037::return document.Value().IsValid() && document.Value().GetTypeId() == Id(\"serialization.primitive\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "b9211fa0f998be9c": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1184::[[nodiscard]] bool TestSerializerRegistryOwnsSharedSerializers()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1194::return registered && found && found->GetTypeId() == type_id && registry.HasSerializer(type_id) && !duplicate &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "b99ebe9336e7c8a2": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:301::[[nodiscard]] bool TestRollbackDiscardsStagedMutations()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:312::return transaction->GetState() == SaveTransactionState::RolledBack && !store.FindObject(PersistentObjectId{1001}) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "ba4318085a71a935": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:7::## Scope and ownership",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:657::static_assert(std::has_virtual_destructor_v<IAssetCatalog>);",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:657::static_assert(std::has_virtual_destructor_v<IAssetCatalog>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "bb43106c7534f6f5": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:317::[[nodiscard]] bool TestConcurrentTransactionConflict()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:332::return first_upsert && first_commit && second_upsert && !second_commit &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "bbcebecd9778b644": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1324::!(chunk_descriptor == ChunkDescriptor{chunk_descriptor}) ||",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1324::!(chunk_descriptor == ChunkDescriptor{chunk_descriptor}) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "be09b1246caf5d99": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1270::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IRegionRegistry>);",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1270::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IRegionRegistry>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "beffcf5a1c18d248": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:7::## Объекты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1281::!epidemic::runtime::IsValidPersistenceTier(PersistenceTier::Protected) ||",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1281::!epidemic::runtime::IsValidPersistenceTier(PersistenceTier::Protected) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "c0035097151e4b5a": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:17::## Materialization",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1277::if (!epidemic::runtime::IsValidResidencyState(ResidencyState::Resident) ||",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1277::if (!epidemic::runtime::IsValidResidencyState(ResidencyState::Resident) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "c013e410f27e4753": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:51::## Registration and validation audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:668::!epidemic::runtime::IsValidAssetLocationKind(canonical.kind) ||",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:668::!epidemic::runtime::IsValidAssetLocationKind(canonical.kind) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "c0bfe9ccde828d72": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:1028::static_assert(std::has_virtual_destructor_v<epidemic::runtime::ITombstoneStore>);",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:1028::static_assert(std::has_virtual_destructor_v<epidemic::runtime::ITombstoneStore>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "c3ebfbe474f70a7e": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1396::[[nodiscard]] bool TestRegistriesCanFreeze()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1412::return registered_serializer && frozen_serializer && serializers.IsFrozen() && !rejected_serializer &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "c3f418e013d0fa3d": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:33::## External loader boundary and accepted-once semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:287::[[nodiscard]] bool TestLoaderRegistryNonOwningContract()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:294::return first && registry.FindLoader(loader.GetResourceType()) == &loader && registry.HasLoader(loader.GetResourceType()) && !second &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "c49d3da7e7718c13": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1458::if (!(one < two))",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1458::if (!(one < two))"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "c4fb346826e5c459": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:811::[[nodiscard]] bool TestCandidateAllocationFailureLeavesBackendAndLiveStateOld()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:825::return !failed && failed.GetError().HasCode(\"persistence.allocation_failed\") && transaction->GetState() == SaveTransactionState::Failed &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "c6655c900b99c29b": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1465::if (!(key == same) || std::hash<MigrationKey>{}(key) != std::hash<MigrationKey>{}(same))",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1465::if (!(key == same) || std::hash<MigrationKey>{}(key) != std::hash<MigrationKey>{}(same))"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "c6aa8c0d59d8ffbf": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:637::[[nodiscard]] bool TestFinalizeValidatesMetadataAndPreservesWriterOnFailure()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:652::return valid && valid.Value().IsValid();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "c819fa376e414c54": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:1030::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IPersistenceBackend>);",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:1030::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IPersistenceBackend>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "ca26fb40866d7489": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:27::## State, identities and derived ownership",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:1318::if (!(type == same_type) || !(dependency == same_dependency) || !(handle == same_handle) || !(lease == same_lease))",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:1318::if (!(type == same_type) || !(dependency == same_dependency) || !(handle == same_handle) || !(lease == same_lease))"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "ce53e71277b35f0a": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1447::static_assert(std::has_virtual_destructor_v<epidemic::runtime::ISerializer>);",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1447::static_assert(std::has_virtual_destructor_v<epidemic::runtime::ISerializer>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "ce819f7ab076b523": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:27::## State, identities and derived ownership",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:298::[[nodiscard]] bool TestRequestQueuesAndProcessLoadsPayload()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:317::return processed && processed.Value().processed_jobs == 1u && processed.Value().loaded_resources == 1u && loader.load_count() == 1 &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "ce8266654474e4ac": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:13::## Public mutation and query contract",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:1301::static_assert(std::has_virtual_destructor_v<IResourceManager>);",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:1301::static_assert(std::has_virtual_destructor_v<IResourceManager>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "cf87e9e356e61a28": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1018::[[nodiscard]] bool TestPrimitiveDocumentRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1037::return document.Value().IsValid() && document.Value().GetTypeId() == Id(\"serialization.primitive\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "d0194061b8ec11e8": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:33::## External loader boundary and accepted-once semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:1305::if (payload.GetSizeBytes() != 2u || payload.Bytes().size() != 2u)",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:1305::if (payload.GetSizeBytes() != 2u || payload.Bytes().size() != 2u)"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "d05896cec808e010": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:7::## Модель",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:882::[[nodiscard]] bool TestQueryAndSnapshotResultsAreDetached()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:912::return live_object && live_object->payload.bytes.size() == 2u && live_object->payload.bytes[0] == std::byte{0x10} &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "d1468745ee77306f": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:655::[[nodiscard]] bool TestArchiveAllocationFailureAtomicity()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:745::return recovered && recovered.Value().IsValid();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "d226c1c6aefb7546": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:51::## Registration and validation audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:69::bool TestDefaultMetadataState()",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:72::return !metadata.id.IsValid() && !metadata.type.IsValid() && metadata.location.kind == AssetLocationKind::FilePath &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "d25f58fcff9cf0cc": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:33::## External loader boundary and accepted-once semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:287::[[nodiscard]] bool TestLoaderRegistryNonOwningContract()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:294::return first && registry.FindLoader(loader.GetResourceType()) == &loader && registry.HasLoader(loader.GetResourceType()) && !second &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "d2683d0a87a1590e": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:51::## Registration and validation audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:210::bool TestCatalogSeal()",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:221::return catalog.IsSealed() && after_seal.has_value() && !rejected && rejected.GetError().HasCode(\"asset.catalog_sealed\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "d548c8897e50dcec": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1465::if (!(key == same) || std::hash<MigrationKey>{}(key) != std::hash<MigrationKey>{}(same))",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1465::if (!(key == same) || std::hash<MigrationKey>{}(key) != std::hash<MigrationKey>{}(same))"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "d61a75f4bf9babe5": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1018::[[nodiscard]] bool TestPrimitiveDocumentRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1037::return document.Value().IsValid() && document.Value().GetTypeId() == Id(\"serialization.primitive\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "d7a1c05c83468a97": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:17::## Materialization",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:477::const auto logical_active = ValidateRealityResidencyCombination(ObjectRealityLevel::Logical, ResidencyState::Active);",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:477::const auto logical_active = ValidateRealityResidencyCombination(ObjectRealityLevel::Logical, ResidencyState::Active);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "da526dd22f40d6c8": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:339::[[nodiscard]] bool TestFailedCommitIsAtomic()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:350::return !commit && commit.GetError().HasCode(\"persistence.record_not_found\") && transaction->GetState() == SaveTransactionState::Failed &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "dad28c10a25904b8": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:17::## Materialization",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1325::!(materialization == MaterializationRequest{materialization}) || !(token == DemotionCommitToken{token}) ||",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1325::!(materialization == MaterializationRequest{materialization}) || !(token == DemotionCommitToken{token}) ||"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "db010917563528de": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:7::## Модель",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:268::[[nodiscard]] bool TestPayloadAndTypedProtectionContracts()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:280::return payload.IsValid() && !invalid_payload.IsValid() && HasProtectionFlag(mask, ObjectProtectionFlags::PreventTheft) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "e008952150de2abc": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:17::## Materialization",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1275::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IDemotionCommitAuthority>);",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1275::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IDemotionCommitAuthority>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "e21e19a50a3d5995": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:1029::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IZoneOverrideStore>);",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:1029::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IZoneOverrideStore>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "e351c3c91d30b40b": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:27::## State, identities and derived ownership",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:266::[[nodiscard]] bool TestBasicTypesAndStateTransitions()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:271::return !handle.IsValid() && !request.resource_id.IsValid() && result &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "e855283b5e5de806": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:7::## Модель",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:268::[[nodiscard]] bool TestPayloadAndTypedProtectionContracts()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:280::return payload.IsValid() && !invalid_payload.IsValid() && HasProtectionFlag(mask, ObjectProtectionFlags::PreventTheft) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "e8c783924c32ba4e": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:7::## Объекты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:517::bool TestDestroyedPlacementRequiresDestroyCommandAndIsTerminal()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:542::return !forged_destroyed.HasValue() && forged_destroyed.GetError().HasCode(\"world.destroyed_requires_destroy_command\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "e95c723437fb8014": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:7::## Объекты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:916::[[nodiscard]] bool TestCreatePersistentIndexFailureRollsBackEverything()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:935::return retry && retry.Value().runtime_id.Raw() == before_next;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "e9a1d1f9524d278c": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:13::## Chunks и regions",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:111::bool TestRegisterAndFindChunk()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:111::bool TestRegisterAndFindChunk()"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "ea8a2c26b864a8d2": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:17::## Materialization",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:517::bool TestDestroyedPlacementRequiresDestroyCommandAndIsTerminal()",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:542::return !forged_destroyed.HasValue() && forged_destroyed.GetError().HasCode(\"world.destroyed_requires_destroy_command\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "eab56c9528190889": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:575::[[nodiscard]] bool TestUpsertThenRemoveLazyRuleInOneTransaction()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:585::return commit && store.GetRevision() == 1u && store.ListLazyRules().empty();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "ead6dd825ed7d109": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1476::return CreateSerializationError(\"serialization.evidence\", \"evidence\").HasCode(\"serialization.evidence\");",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1476::return CreateSerializationError(\"serialization.evidence\", \"evidence\").HasCode(\"serialization.evidence\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "eadb1a248bdc15bb": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:7::## Модель",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:654::[[nodiscard]] bool TestFactoryCreatesUsableStore()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:667::return services.Value().store->FindObject(PersistentObjectId{77}).has_value();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "ec21526d5f3a59d2": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:33::## External loader boundary and accepted-once semantics",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:1299::static_assert(std::has_virtual_destructor_v<IResourceLoader>);",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:1299::static_assert(std::has_virtual_destructor_v<IResourceLoader>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "ec42021b8a6030a4": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:1031::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IPersistenceAdministrativeTransaction>);",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:1031::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IPersistenceAdministrativeTransaction>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "edfc2c87ec340067": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1245::[[nodiscard]] bool TestApplyMigrationsBuildsNewDocument()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1282::return original_reader && migrated_reader && original_reader.Value()->ReadString(\"name\").Value() == \"original\" &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "eef92aca35729a14": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:7::## Объекты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:1273::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IWorldObjectRegistry>);",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:1273::static_assert(std::has_virtual_destructor_v<epidemic::runtime::IWorldObjectRegistry>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "f37635fdc2c74edb": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:748::[[nodiscard]] bool TestSerializerRegistryAndTypedBoundaryValidation()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:806::return !wrong_type && wrong_type.GetError().HasCode(\"serialization.type_mismatch\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "f425ad6a6ee9d5e3": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/persistence.md:19::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Persistence/tests/persistence_tests.cpp:354::[[nodiscard]] bool TestLazyRuleIdQueries()",
+        "assertions": [
+          "EngineRuntime/Persistence/tests/persistence_tests.cpp:366::return by_id && by_id->rule_id == LazyRuleId{5002} && by_id->revision == 1u && by_target.size() == 2u &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePersistenceTests"
+      }
+    },
+    "f4d2bcd0f23e2d4f": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:65::## Query and lifecycle audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:291::bool TestInvalidQueryInputsAreControlled()",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:306::return !catalog.FindById(invalid_id).has_value() && catalog.FindByType(invalid_type).empty() &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "f4e9358e54c3fca9": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:15::## Граница и стабильность",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:1198::[[nodiscard]] bool TestMigrationRegistryFindsExactAndChainedPaths()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:1212::return exact == one_to_two && path && path.Value().size() == 2u && same && same.Value().empty();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "f5554d404cad7d4f": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_resources_audit.md:13::## Public mutation and query contract",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Resources/tests/resources_tests.cpp:790::[[nodiscard]] bool TestInFlightResourcesAreNotEvicted()",
+        "assertions": [
+          "EngineRuntime/Resources/tests/resources_tests.cpp:808::return handle && release && evicted_count == 0u && slot && slot->state == ResourceState::Queued;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeResourcesTests"
+      }
+    },
+    "f7eb929e4f9faa2c": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:606::[[nodiscard]] bool TestDeepEmptyStructuresBytesAndNullRoundTrip()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:634::return read_bytes && read_bytes.Value() == bytes && is_null && is_null.Value() && reader.EndObject() && reader.EndObject();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    },
+    "fcf168fed822c30e": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:59::## Dependency manifest audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:346::bool TestDependencyManifestAndCycle()",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:367::return manifest && manifest.Value().root == root.id && manifest.Value().dependencies.size() == 1 && seeded_cycle &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "fd27ffb1f62128a9": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/world.md:17::## Materialization",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/World/tests/world_tests.cpp:794::const auto revoked = services.Value().demotion_authority->RevokeDemotionCommitToken(token.Value().token_id);",
+        "assertions": [
+          "EngineRuntime/World/tests/world_tests.cpp:794::const auto revoked = services.Value().demotion_authority->RevokeDemotionCommitToken(token.Value().token_id);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeWorldTests"
+      }
+    },
+    "ff63b7b59fc7c82a": {
+      "contract": {
+        "anchor": "docs/freeze/engineruntime_assets_audit.md:65::## Query and lifecycle audit",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:659::static_assert(std::has_virtual_destructor_v<IAssetLocationResolver>);",
+        "assertions": [
+          "EngineRuntime/Assets/tests/assets_tests.cpp:659::static_assert(std::has_virtual_destructor_v<IAssetLocationResolver>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeAssetsTests"
+      }
+    },
+    "ffd3dc9f6c608469": {
+      "contract": {
+        "anchor": "docs/EngineRuntime/modules/serialization.md:11::## Инварианты",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Serialization/tests/serialization_tests.cpp:655::[[nodiscard]] bool TestArchiveAllocationFailureAtomicity()",
+        "assertions": [
+          "EngineRuntime/Serialization/tests/serialization_tests.cpp:745::return recovered && recovered.Value().IsValid();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSerializationTests"
+      }
+    }
+  },
+  "schema_version": 1
+}

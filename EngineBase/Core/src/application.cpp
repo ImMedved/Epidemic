@@ -1,5 +1,7 @@
 #include <Epidemic/Core/application.h>
 
+#include "frame_count_policy.h"
+
 #include <Epidemic/Core/configuration.h>
 #include <Epidemic/Core/event_bus.h>
 #include <Epidemic/Core/main_thread_dispatcher.h>
@@ -11,6 +13,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <exception>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -20,10 +23,13 @@ namespace epidemic::core
 {
 // This file implements the EngineBase application lifecycle and frame loop.
 // Most behavioral contracts are documented in application.h; the local helpers below support those contracts.
+// Этот файл реализует жизненный цикл приложения EngineBase и цикл кадра.
+// Большинство поведенческих контрактов документировано в application.h.
 
 namespace
 {
 // Throws when a required core service is missing from the application service container.
+// Выбрасывается, когда запрошенный сервис ядра не найден в контейнере сервисов приложения.
 template <typename TService>
 void EnsureRegistered(const ServiceContainer &services, std::string_view service_name)
 {
@@ -34,12 +40,14 @@ void EnsureRegistered(const ServiceContainer &services, std::string_view service
 }
 
 // Converts a frame phase enum to its backing array index.
+// Преобразует enum фазы кадра в индекс базового массива.
 [[nodiscard]] constexpr std::size_t ToIndex(FramePhase phase) noexcept
 {
     return static_cast<std::size_t>(phase);
 }
 
 // Routes per-phase timing into the specific diagnostics counters that expose frame-loop health.
+// Записывает время выполнения фазы в диагностические счетчики, отражающие состояние цикла кадра.
 void UpdatePhaseDiagnostics(FramePhase phase, std::int64_t duration_micros) noexcept
 {
     using diagnostics::CounterId;
@@ -235,6 +243,11 @@ int Application::Shutdown()
         return 0;
     }
 
+    if (state_ == State::Running)
+    {
+        throw std::runtime_error("Application shutdown called in invalid state");
+    }
+
     if (state_ == State::Constructed)
     {
         state_ = State::ShutDown;
@@ -247,41 +260,82 @@ int Application::Shutdown()
         auto logger = Logger();
         logger->Info("Application", "Lifecycle", "Shutdown started");
 
-        modules_.ShutdownAll(services_, *logger);
-
+        std::exception_ptr first_error;
+        bool scheduler_quiesced = false;
         const auto scheduler = services_.Get<tasks::ITaskScheduler>();
         try
         {
-            scheduler->Shutdown();
+            scheduler->RequestStop();
+            scheduler->Join();
+            scheduler_quiesced = true;
         }
         catch (const std::exception &exception)
         {
             logger->Error("Application", "Shutdown",
                           "Task scheduler shutdown reported an error: " + std::string(exception.what()));
+            if (!first_error)
+            {
+                first_error = std::current_exception();
+            }
         }
         catch (...)
         {
             logger->Error("Application", "Shutdown",
                           "Task scheduler shutdown reported an unknown error");
+            if (!first_error)
+            {
+                first_error = std::current_exception();
+            }
         }
 
-        try
+        if (scheduler_quiesced)
         {
-            scheduler->WaitIdle();
-        }
-        catch (const std::exception &exception)
-        {
-            logger->Error("Application", "Shutdown",
-                          "Task scheduler drain reported an error during shutdown: " + std::string(exception.what()));
-        }
-        catch (...)
-        {
-            logger->Error("Application", "Shutdown",
-                          "Task scheduler drain reported an unknown error during shutdown");
+            try
+            {
+                scheduler->WaitIdle();
+            }
+            catch (const std::exception &exception)
+            {
+                logger->Error("Application", "Shutdown",
+                              "Task scheduler drain reported an error during shutdown: " + std::string(exception.what()));
+                first_error = std::current_exception();
+            }
+            catch (...)
+            {
+                logger->Error("Application", "Shutdown",
+                              "Task scheduler drain reported an unknown error during shutdown");
+                first_error = std::current_exception();
+            }
+
+            try
+            {
+                modules_.ShutdownAll(services_, *logger);
+            }
+            catch (const std::exception &exception)
+            {
+                logger->Error("Application", "Shutdown",
+                              "Module shutdown reported an error: " + std::string(exception.what()));
+                if (!first_error)
+                {
+                    first_error = std::current_exception();
+                }
+            }
+            catch (...)
+            {
+                logger->Error("Application", "Shutdown", "Module shutdown reported an unknown error");
+                if (!first_error)
+                {
+                    first_error = std::current_exception();
+                }
+            }
         }
 
         logger->Info("Application", "Lifecycle", "Shutdown finished");
         state_ = State::ShutDown;
+        if (first_error)
+        {
+            std::rethrow_exception(first_error);
+        }
         return 0;
     }
     catch (...)
@@ -318,12 +372,41 @@ std::optional<std::uint64_t> Application::FrameLimit() const noexcept
 
 void Application::AddFramePhaseHandler(FramePhase phase, FramePhaseCallback callback, std::string debug_name)
 {
-    if (!callback)
+    std::vector<FramePhaseHandlerRegistration> registrations;
+    registrations.push_back(FramePhaseHandlerRegistration{phase, std::move(callback), std::move(debug_name)});
+    AddFramePhaseHandlersAtomic(std::move(registrations));
+}
+
+void Application::AddFramePhaseHandlersAtomic(std::vector<FramePhaseHandlerRegistration> registrations)
+{
+    if (registrations.empty())
     {
-        throw std::invalid_argument("Frame phase handler must not be empty");
+        return;
     }
 
-    phase_handlers_[ToIndex(phase)].push_back(PhaseHandler{std::move(callback), std::move(debug_name)});
+    for (const auto &registration : registrations)
+    {
+        if (!registration.callback)
+        {
+            throw std::invalid_argument("Frame phase handler must not be empty");
+        }
+        if (ToIndex(registration.phase) >= FramePhaseCount())
+        {
+            throw std::invalid_argument("Frame phase handler requires a valid frame phase");
+        }
+    }
+
+    auto candidate_handlers = phase_handlers_;
+    for (auto &registration : registrations)
+    {
+        candidate_handlers[ToIndex(registration.phase)].push_back(
+            PhaseHandler{std::move(registration.callback), std::move(registration.debug_name)});
+    }
+
+    for (std::size_t index = 0; index < phase_handlers_.size(); ++index)
+    {
+        phase_handlers_[index].swap(candidate_handlers[index]);
+    }
 }
 
 void Application::ScheduleMainThreadTask(MainThreadTask task, std::string debug_name)
@@ -377,6 +460,10 @@ void Application::ExecuteFrame()
 
     for (const auto phase : FramePhaseOrder())
     {
+        if (phase == FramePhase::TickModules && StopRequested())
+        {
+            break;
+        }
         ExecutePhase(phase, frame_context, *logger);
     }
 
@@ -390,7 +477,7 @@ void Application::ExecuteFrame()
     logger->Debug("Application", "Frame",
                   "Frame " + std::to_string(frame_context.frame_index.Value()) + " finished in " +
                       std::to_string(frame_time_micros) + " us");
-    ++executed_frame_count_;
+    executed_frame_count_ = detail::AdvanceExecutedFrameCount(executed_frame_count_);
 }
 
 void Application::ExecutePhase(FramePhase phase, const FrameContext &frame_context, diagnostics::ILogger &logger)

@@ -11,4 +11,4 @@ target_link_libraries(EpidemicRuntimeAssetsTests
 )
 
 epidemic_configure_target(EpidemicRuntimeAssetsTests)
-add_test(NAME EpidemicRuntimeAssetsTests COMMAND EpidemicRuntimeAssetsTests)
+epidemic_add_test(EpidemicRuntimeAssetsTests)

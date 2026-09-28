@@ -18,11 +18,82 @@ namespace
     return std::isfinite(value) != 0;
 }
 
+class NullRhiSwapChain;
+
+// Shared null-backend presentation state. Command contexts observe only the currently active swap chain.
+struct NullRhiDeviceState
+{
+    std::weak_ptr<NullRhiSwapChain> active_swap_chain;
+};
+
+// Swap-chain implementation that stores validated descriptor state without touching native presentation resources.
+class NullRhiSwapChain final : public IRhiSwapChain
+{
+  public:
+    // Stores the validated descriptor for later resize/present simulation.
+    explicit NullRhiSwapChain(RhiSwapChainDesc descriptor) : descriptor_(std::move(descriptor))
+    {
+    }
+
+    // Simulates presentation while the null swap chain remains alive and valid.
+    [[nodiscard]] epidemic::foundation::Result<void> Present() override
+    {
+        return epidemic::foundation::Result<void>::Success();
+    }
+
+    // Validates and atomically stores new swap-chain dimensions.
+    [[nodiscard]] epidemic::foundation::Result<void> Resize(std::uint32_t width, std::uint32_t height) override
+    {
+        if (width == 0 || height == 0)
+        {
+            return epidemic::foundation::Result<void>::Failure(
+                epidemic::foundation::Error::Create("rhi.invalid_swap_chain_size",
+                                                    "Swap chain resize dimensions must be greater than zero"));
+        }
+
+        descriptor_.width = width;
+        descriptor_.height = height;
+        return epidemic::foundation::Result<void>::Success();
+    }
+
+    // Returns the stored swap-chain width.
+    [[nodiscard]] std::uint32_t Width() const noexcept override
+    {
+        return descriptor_.width;
+    }
+
+    // Returns the stored swap-chain height.
+    [[nodiscard]] std::uint32_t Height() const noexcept override
+    {
+        return descriptor_.height;
+    }
+
+    // Returns the stored buffer count.
+    [[nodiscard]] std::uint32_t BufferCount() const noexcept override
+    {
+        return descriptor_.buffer_count;
+    }
+
+    // Returns the stored color format.
+    [[nodiscard]] RhiPixelFormat ColorFormat() const noexcept override
+    {
+        return descriptor_.color_format;
+    }
+
+  private:
+    RhiSwapChainDesc descriptor_;
+};
+
 // Command-context implementation that validates sequencing without talking to hardware.
 class NullRhiCommandContext final : public IRhiCommandContext
 {
   public:
-        // Starts a synthetic frame and rejects nested BeginFrame calls.
+    // Binds this context to the device's presentation state without taking ownership of a swap chain.
+    explicit NullRhiCommandContext(std::shared_ptr<NullRhiDeviceState> state) : state_(std::move(state))
+    {
+    }
+
+    // Starts a synthetic frame and rejects nested BeginFrame calls.
     [[nodiscard]] epidemic::foundation::Result<void> BeginFrame() override
     {
         if (frame_active_)
@@ -36,7 +107,7 @@ class NullRhiCommandContext final : public IRhiCommandContext
         return epidemic::foundation::Result<void>::Success();
     }
 
-        // Validates and records one synthetic clear operation inside the active frame.
+    // Validates one synthetic clear operation against the active frame and presentation target.
     [[nodiscard]] epidemic::foundation::Result<void> Clear(const RhiClearDesc &clear_desc) override
     {
         if (!frame_active_)
@@ -52,12 +123,17 @@ class NullRhiCommandContext final : public IRhiCommandContext
             return validation_result;
         }
 
-        last_clear_desc_ = clear_desc;
-        ++clear_count_;
+        if (state_->active_swap_chain.expired())
+        {
+            return epidemic::foundation::Result<void>::Failure(
+                epidemic::foundation::Error::Create("rhi.no_swap_chain",
+                                                    "RHI command context requires an active swap chain before Clear"));
+        }
+
         return epidemic::foundation::Result<void>::Success();
     }
 
-        // Ends the synthetic frame and rejects EndFrame without BeginFrame.
+    // Ends the synthetic frame and rejects EndFrame without BeginFrame.
     [[nodiscard]] epidemic::foundation::Result<void> EndFrame() override
     {
         if (!frame_active_)
@@ -71,110 +147,48 @@ class NullRhiCommandContext final : public IRhiCommandContext
         return epidemic::foundation::Result<void>::Success();
     }
 
-        // Returns whether BeginFrame has been called without a matching EndFrame.
+    // Returns whether BeginFrame has been called without a matching EndFrame.
     [[nodiscard]] bool IsFrameActive() const noexcept override
     {
         return frame_active_;
     }
 
   private:
+    std::shared_ptr<NullRhiDeviceState> state_;
     bool frame_active_{false};
-    std::size_t clear_count_{};
-    RhiClearDesc last_clear_desc_{};
-};
-
-// Swap-chain implementation that only stores descriptor state and counters.
-class NullRhiSwapChain final : public IRhiSwapChain
-{
-  public:
-        // Stores the validated descriptor for later resize/present simulation.
-    explicit NullRhiSwapChain(RhiSwapChainDesc descriptor) : descriptor_(std::move(descriptor))
-    {
-    }
-
-        // Simulates one present operation.
-    [[nodiscard]] epidemic::foundation::Result<void> Present() override
-    {
-        ++present_count_;
-        return epidemic::foundation::Result<void>::Success();
-    }
-
-        // Validates and stores new swap-chain dimensions.
-    [[nodiscard]] epidemic::foundation::Result<void> Resize(std::uint32_t width, std::uint32_t height) override
-    {
-        if (width == 0 || height == 0)
-        {
-            return epidemic::foundation::Result<void>::Failure(
-                epidemic::foundation::Error::Create("rhi.invalid_swap_chain_size",
-                                                    "Swap chain resize dimensions must be greater than zero"));
-        }
-
-        descriptor_.width = width;
-        descriptor_.height = height;
-        ++resize_count_;
-        return epidemic::foundation::Result<void>::Success();
-    }
-
-        // Returns the stored swap-chain width.
-    [[nodiscard]] std::uint32_t Width() const noexcept override
-    {
-        return descriptor_.width;
-    }
-
-        // Returns the stored swap-chain height.
-    [[nodiscard]] std::uint32_t Height() const noexcept override
-    {
-        return descriptor_.height;
-    }
-
-        // Returns the stored buffer count.
-    [[nodiscard]] std::uint32_t BufferCount() const noexcept override
-    {
-        return descriptor_.buffer_count;
-    }
-
-        // Returns the stored color format.
-    [[nodiscard]] RhiPixelFormat ColorFormat() const noexcept override
-    {
-        return descriptor_.color_format;
-    }
-
-  private:
-    RhiSwapChainDesc descriptor_;
-    std::size_t present_count_{};
-    std::size_t resize_count_{};
 };
 
 // Top-level null backend device that manufactures null command contexts and swap chains.
 class NullRhiDevice final : public IRhiDevice
 {
   public:
-        // Stores the immutable descriptor for later inspection.
-    explicit NullRhiDevice(RhiDeviceDesc descriptor) : descriptor_(std::move(descriptor))
+    // Stores the immutable descriptor and shared presentation state.
+    NullRhiDevice(RhiDeviceDesc descriptor, std::shared_ptr<NullRhiDeviceState> state)
+        : descriptor_(std::move(descriptor)), state_(std::move(state))
     {
     }
 
-        // Returns the stable backend name.
+    // Returns the stable backend name.
     [[nodiscard]] std::string_view BackendName() const noexcept override
     {
         return "NullRHI";
     }
 
-        // Returns the immutable creation descriptor.
+    // Returns the immutable creation descriptor.
     [[nodiscard]] const RhiDeviceDesc &Descriptor() const noexcept override
     {
         return descriptor_;
     }
 
-        // Creates a fresh null command context.
+    // Creates a fresh null command context bound to the device presentation state.
     [[nodiscard]] epidemic::foundation::Result<std::shared_ptr<IRhiCommandContext>> CreateCommandContext() override
     {
         return epidemic::foundation::Result<std::shared_ptr<IRhiCommandContext>>::Success(
-            std::make_shared<NullRhiCommandContext>());
+            std::make_shared<NullRhiCommandContext>(state_));
     }
 
+    // Validates and creates a null swap chain, publishing it only after successful construction.
     [[nodiscard]] epidemic::foundation::Result<std::shared_ptr<IRhiSwapChain>>
-        // Validates and creates a null swap chain.
     CreateSwapChain(const RhiSwapChainDesc &swap_chain_desc) override
     {
         const auto validation_result = Validate(swap_chain_desc);
@@ -183,12 +197,14 @@ class NullRhiDevice final : public IRhiDevice
             return epidemic::foundation::Result<std::shared_ptr<IRhiSwapChain>>::Failure(validation_result.GetError());
         }
 
-        return epidemic::foundation::Result<std::shared_ptr<IRhiSwapChain>>::Success(
-            std::make_shared<NullRhiSwapChain>(swap_chain_desc));
+        auto swap_chain = std::make_shared<NullRhiSwapChain>(swap_chain_desc);
+        state_->active_swap_chain = swap_chain;
+        return epidemic::foundation::Result<std::shared_ptr<IRhiSwapChain>>::Success(std::move(swap_chain));
     }
 
   private:
     RhiDeviceDesc descriptor_;
+    std::shared_ptr<NullRhiDeviceState> state_;
 };
 } // namespace
 
@@ -228,11 +244,16 @@ epidemic::foundation::Result<void> Validate(const RhiSwapChainDesc &swap_chain_d
                                                 "Swap chain buffer count must be greater than zero"));
     }
 
-    if (swap_chain_desc.color_format == RhiPixelFormat::Unknown)
+    switch (swap_chain_desc.color_format)
     {
+    case RhiPixelFormat::R8G8B8A8_UNorm:
+    case RhiPixelFormat::B8G8R8A8_UNorm:
+        break;
+    case RhiPixelFormat::Unknown:
+    default:
         return epidemic::foundation::Result<void>::Failure(
             epidemic::foundation::Error::Create("rhi.invalid_color_format",
-                                                "Swap chain color format must be specified"));
+                                                "Swap chain color format must be a supported pixel format"));
     }
 
     return epidemic::foundation::Result<void>::Success();
@@ -268,6 +289,8 @@ epidemic::foundation::Result<std::shared_ptr<IRhiDevice>> CreateNullRhiDevice(co
         return epidemic::foundation::Result<std::shared_ptr<IRhiDevice>>::Failure(validation_result.GetError());
     }
 
-    return epidemic::foundation::Result<std::shared_ptr<IRhiDevice>>::Success(std::make_shared<NullRhiDevice>(device_desc));
+    auto state = std::make_shared<NullRhiDeviceState>();
+    return epidemic::foundation::Result<std::shared_ptr<IRhiDevice>>::Success(
+        std::make_shared<NullRhiDevice>(device_desc, std::move(state)));
 }
 } // namespace epidemic::rhi

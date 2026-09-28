@@ -1,0 +1,3269 @@
+{
+  "closure_review": "All PASS criteria use typed evidence containing every required kind; test evidence names a registered target and exact assertion. N/A decisions have module-specific rationales.",
+  "contract": "docs/freeze/local_ready_contract.md",
+  "modules": {
+    "EngineFramework/GameplayWorldStateOwners/Abilities": {
+      "API-CLASSIFIED": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:73::- `0225a34b29e3b3eb` | `MUTATOR` | `epidemic::gameplay::abilities::IAbilityResourceProvider` | `[[nodiscard]] virtual foundation::Result<AbilityResourceReservation> Reserve(GameplayObjectRef owner,AbilityResourceTypeId type,std::int64_t amount_micro,GameplayContext context)=0;`",
+            "kind": "contract"
+          }
+        ],
+        "rationale": "Abilities API-CLASSIFIED was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-FAILURE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:73::- `0225a34b29e3b3eb` | `MUTATOR` | `epidemic::gameplay::abilities::IAbilityResourceProvider` | `[[nodiscard]] virtual foundation::Result<AbilityResourceReservation> Reserve(GameplayObjectRef owner,AbilityResourceTypeId type,std::int64_t amount_micro,GameplayContext context)=0;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:267::if (failed || tx_res.balance != 100)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:267::if (failed || tx_res.balance != 100)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities API-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-INVALID": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:73::- `0225a34b29e3b3eb` | `MUTATOR` | `epidemic::gameplay::abilities::IAbilityResourceProvider` | `[[nodiscard]] virtual foundation::Result<AbilityResourceReservation> Reserve(GameplayObjectRef owner,AbilityResourceTypeId type,std::int64_t amount_micro,GameplayContext context)=0;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:126::return foundation::Result<void>::Failure(foundation::Error::Create(\"reconcile\", \"invalid reservation\"));",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:126::return foundation::Result<void>::Failure(foundation::Error::Create(\"reconcile\", \"invalid reservation\"));"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities API-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-OVERLOADS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:73::- `0225a34b29e3b3eb` | `MUTATOR` | `epidemic::gameplay::abilities::IAbilityResourceProvider` | `[[nodiscard]] virtual foundation::Result<AbilityResourceReservation> Reserve(GameplayObjectRef owner,AbilityResourceTypeId type,std::int64_t amount_micro,GameplayContext context)=0;`",
+            "kind": "contract"
+          }
+        ],
+        "rationale": "Abilities API-OVERLOADS was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-PRECONDITIONS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:73::- `0225a34b29e3b3eb` | `MUTATOR` | `epidemic::gameplay::abilities::IAbilityResourceProvider` | `[[nodiscard]] virtual foundation::Result<AbilityResourceReservation> Reserve(GameplayObjectRef owner,AbilityResourceTypeId type,std::int64_t amount_micro,GameplayContext context)=0;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:126::return foundation::Result<void>::Failure(foundation::Error::Create(\"reconcile\", \"invalid reservation\"));",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:126::return foundation::Result<void>::Failure(foundation::Error::Create(\"reconcile\", \"invalid reservation\"));"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities API-PRECONDITIONS was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-SUCCESS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:73::- `0225a34b29e3b3eb` | `MUTATOR` | `epidemic::gameplay::abilities::IAbilityResourceProvider` | `[[nodiscard]] virtual foundation::Result<AbilityResourceReservation> Reserve(GameplayObjectRef owner,AbilityResourceTypeId type,std::int64_t amount_micro,GameplayContext context)=0;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:103::return foundation::Result<AbilityResourceReservation>::Success(",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:103::return foundation::Result<AbilityResourceReservation>::Success("
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities API-SUCCESS was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-DIRECT-DEPS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:5::## Responsibility",
+            "kind": "architecture"
+          }
+        ],
+        "rationale": "Abilities ARCH-DIRECT-DEPS was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-PORTS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:5::## Responsibility",
+            "kind": "architecture"
+          },
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:73::- `0225a34b29e3b3eb` | `MUTATOR` | `epidemic::gameplay::abilities::IAbilityResourceProvider` | `[[nodiscard]] virtual foundation::Result<AbilityResourceReservation> Reserve(GameplayObjectRef owner,AbilityResourceTypeId type,std::int64_t amount_micro,GameplayContext context)=0;`",
+            "kind": "contract"
+          }
+        ],
+        "rationale": "Abilities ARCH-PORTS was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-RESPONSIBILITY": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:5::## Responsibility",
+            "kind": "architecture"
+          }
+        ],
+        "rationale": "Abilities ARCH-RESPONSIBILITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-SINGLE-OWNER": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:5::## Responsibility",
+            "kind": "architecture"
+          },
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:21::## Authoritative state",
+            "kind": "state"
+          }
+        ],
+        "rationale": "Abilities ARCH-SINGLE-OWNER was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-EXTERNAL": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:73::- `0225a34b29e3b3eb` | `MUTATOR` | `epidemic::gameplay::abilities::IAbilityResourceProvider` | `[[nodiscard]] virtual foundation::Result<AbilityResourceReservation> Reserve(GameplayObjectRef owner,AbilityResourceTypeId type,std::int64_t amount_micro,GameplayContext context)=0;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:28::return a.id == b.id && a.resource == b.resource && a.provider_token.type == b.provider_token.type &&",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:28::return a.id == b.id && a.resource == b.resource && a.provider_token.type == b.provider_token.type &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities ATOMIC-EXTERNAL was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-MULTI": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:58::bool SameSnapshot(const AbilitiesSnapshot& a, const AbilitiesSnapshot& b)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:60::return SameVector(a.instances, b.instances, SameInstance) &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities ATOMIC-MULTI was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-RECONCILE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:73::- `0225a34b29e3b3eb` | `MUTATOR` | `epidemic::gameplay::abilities::IAbilityResourceProvider` | `[[nodiscard]] virtual foundation::Result<AbilityResourceReservation> Reserve(GameplayObjectRef owner,AbilityResourceTypeId type,std::int64_t amount_micro,GameplayContext context)=0;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:74::std::uint64_t reconciled = 0;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:81::return balance >= amount;"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities ATOMIC-RECONCILE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-SINGLE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:58::bool SameSnapshot(const AbilitiesSnapshot& a, const AbilitiesSnapshot& b)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:60::return SameVector(a.instances, b.instances, SameInstance) &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities ATOMIC-SINGLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-ALLOWED": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:35::a.persistence == b.persistence && a.enabled == b.enabled && a.revision == b.revision;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:40::return a.id == b.id && a.ability == b.ability && a.owner == b.owner && SameTargetSet(a.targets, b.targets) &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities LIFE-ALLOWED was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-FORBIDDEN": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:84::[[nodiscard]] foundation::Result<AbilityResourceReservation> Reserve(GameplayObjectRef, AbilityResourceTypeId type,",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:88::if (type == fail_reserve)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities LIFE-FORBIDDEN was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-RETRY-CLEANUP": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:110::void Release(const AbilityResourceReservation &reservation, GameplayContext) noexcept override",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:117::if (payload)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities LIFE-RETRY-CLEANUP was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-SHUTDOWN": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:84::[[nodiscard]] foundation::Result<AbilityResourceReservation> Reserve(GameplayObjectRef, AbilityResourceTypeId type,",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:88::if (type == fail_reserve)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities LIFE-SHUTDOWN was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-CANDIDATE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:58::bool SameSnapshot(const AbilitiesSnapshot& a, const AbilitiesSnapshot& b)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:60::return SameVector(a.instances, b.instances, SameInstance) &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities PERSIST-CANDIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-CONTINUITY": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:54::return a.sequence == b.sequence && a.kind == b.kind && a.owner == b.owner && a.ability == b.ability &&",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:54::return a.sequence == b.sequence && a.kind == b.kind && a.owner == b.owner && a.ability == b.ability &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities PERSIST-CONTINUITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-FAILURE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:126::return foundation::Result<void>::Failure(foundation::Error::Create(\"reconcile\", \"invalid reservation\"));",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:126::return foundation::Result<void>::Failure(foundation::Error::Create(\"reconcile\", \"invalid reservation\"));"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities PERSIST-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-SNAPSHOT": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:334::auto snapshot = original.CaptureSnapshot();",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:342::if (!restored_did)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities PERSIST-SNAPSHOT was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-VALIDATE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:126::return foundation::Result<void>::Failure(foundation::Error::Create(\"reconcile\", \"invalid reservation\"));",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:126::return foundation::Result<void>::Failure(foundation::Error::Create(\"reconcile\", \"invalid reservation\"));"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities PERSIST-VALIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-COUNTERS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:35::a.persistence == b.persistence && a.enabled == b.enabled && a.revision == b.revision;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:40::return a.id == b.id && a.ability == b.ability && a.owner == b.owner && SameTargetSet(a.targets, b.targets) &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities STATE-COUNTERS was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-INDEXES": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:20::bool SameTargetSet(const AbilityTargetSet& a, const AbilityTargetSet& b)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:22::return a.primary == b.primary && a.targets == b.targets && a.point_micro == b.point_micro &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities STATE-INDEXES was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-NO-FALSE-PUBLISH": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:58::bool SameSnapshot(const AbilitiesSnapshot& a, const AbilitiesSnapshot& b)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:60::return SameVector(a.instances, b.instances, SameInstance) &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities STATE-NO-FALSE-PUBLISH was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-NOOP": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:73::- `0225a34b29e3b3eb` | `MUTATOR` | `epidemic::gameplay::abilities::IAbilityResourceProvider` | `[[nodiscard]] virtual foundation::Result<AbilityResourceReservation> Reserve(GameplayObjectRef owner,AbilityResourceTypeId type,std::int64_t amount_micro,GameplayContext context)=0;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:84::[[nodiscard]] foundation::Result<AbilityResourceReservation> Reserve(GameplayObjectRef, AbilityResourceTypeId type,",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:88::if (type == fail_reserve)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities STATE-NOOP was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-PRIMARY": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:20::bool SameTargetSet(const AbilityTargetSet& a, const AbilityTargetSet& b)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:22::return a.primary == b.primary && a.targets == b.targets && a.point_micro == b.point_micro &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities STATE-PRIMARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-BOUNDARY": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:423::if (revision_guard.SetAbilityEnabled(revision_instance, false) ||",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:423::if (revision_guard.SetAbilityEnabled(revision_instance, false) ||"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities TEST-BOUNDARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-CALLBACK-FAILURE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Abilities.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:28::return a.id == b.id && a.resource == b.resource && a.provider_token.type == b.provider_token.type &&",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:28::return a.id == b.id && a.resource == b.resource && a.provider_token.type == b.provider_token.type &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities TEST-CALLBACK-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-DUPLICATE": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:84::[[nodiscard]] foundation::Result<AbilityResourceReservation> Reserve(GameplayObjectRef, AbilityResourceTypeId type,",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:88::if (type == fail_reserve)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities TEST-DUPLICATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-EMPTY": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:17::return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), pred);",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:17::return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), pred);"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities TEST-EMPTY was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-HAPPY": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:103::return foundation::Result<AbilityResourceReservation>::Success(",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:103::return foundation::Result<AbilityResourceReservation>::Success("
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities TEST-HAPPY was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-INVALID": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:126::return foundation::Result<void>::Failure(foundation::Error::Create(\"reconcile\", \"invalid reservation\"));",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:126::return foundation::Result<void>::Failure(foundation::Error::Create(\"reconcile\", \"invalid reservation\"));"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities TEST-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-REGRESSION": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:452::test_seam::FailNext(test_seam::FaultPoint::BindScheduleBeforePublish);",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:454::if (rebound)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities TEST-REGRESSION was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-STALE": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:35::a.persistence == b.persistence && a.enabled == b.enabled && a.revision == b.revision;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:40::return a.id == b.id && a.ability == b.ability && a.owner == b.owner && SameTargetSet(a.targets, b.targets) &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities TEST-STALE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-WRONG-LIFECYCLE": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:84::[[nodiscard]] foundation::Result<AbilityResourceReservation> Reserve(GameplayObjectRef, AbilityResourceTypeId type,",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:88::if (type == fail_reserve)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkAbilitiesTests"
+          }
+        ],
+        "rationale": "Abilities TEST-WRONG-LIFECYCLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAbilitiesTests assertion recorded above.",
+        "status": "PASS"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Combat": {
+      "API-CLASSIFIED": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:73::- `0b04e28ad9b86e07` | `MUTATOR` | `epidemic::gameplay::combat::CombatService` | `[[nodiscard]] foundation::Result<void> RemoveCombatant(GameplayObjectRef subject,GameplayContext context={});`",
+            "kind": "contract"
+          }
+        ],
+        "rationale": "Combat API-CLASSIFIED was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-FAILURE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:73::- `0b04e28ad9b86e07` | `MUTATOR` | `epidemic::gameplay::combat::CombatService` | `[[nodiscard]] foundation::Result<void> RemoveCombatant(GameplayObjectRef subject,GameplayContext context={});`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "docs/EngineFramework/Combat.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:38::health.default_maximum_micro = 100'000'000;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:41::if (!hp)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat API-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-INVALID": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:73::- `0b04e28ad9b86e07` | `MUTATOR` | `epidemic::gameplay::combat::CombatService` | `[[nodiscard]] foundation::Result<void> RemoveCombatant(GameplayObjectRef subject,GameplayContext context={});`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:105::if (superseded_commit || !superseded_commit.GetError().HasCode(\"gameplay.combat.plan_unknown\"))",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:105::if (superseded_commit || !superseded_commit.GetError().HasCode(\"gameplay.combat.plan_unknown\"))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat API-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-OVERLOADS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:73::- `0b04e28ad9b86e07` | `MUTATOR` | `epidemic::gameplay::combat::CombatService` | `[[nodiscard]] foundation::Result<void> RemoveCombatant(GameplayObjectRef subject,GameplayContext context={});`",
+            "kind": "contract"
+          }
+        ],
+        "rationale": "Combat API-OVERLOADS was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-PRECONDITIONS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:73::- `0b04e28ad9b86e07` | `MUTATOR` | `epidemic::gameplay::combat::CombatService` | `[[nodiscard]] foundation::Result<void> RemoveCombatant(GameplayObjectRef subject,GameplayContext context={});`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:105::if (superseded_commit || !superseded_commit.GetError().HasCode(\"gameplay.combat.plan_unknown\"))",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:105::if (superseded_commit || !superseded_commit.GetError().HasCode(\"gameplay.combat.plan_unknown\"))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat API-PRECONDITIONS was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-SUCCESS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:73::- `0b04e28ad9b86e07` | `MUTATOR` | `epidemic::gameplay::combat::CombatService` | `[[nodiscard]] foundation::Result<void> RemoveCombatant(GameplayObjectRef subject,GameplayContext context={});`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:58::health_profile.target_resource = hp.Value();",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:66::if (!health_profile_id)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat API-SUCCESS was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-DIRECT-DEPS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:5::## Responsibility",
+            "kind": "architecture"
+          }
+        ],
+        "rationale": "Combat ARCH-DIRECT-DEPS was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-PORTS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:5::## Responsibility",
+            "kind": "architecture"
+          },
+          {
+            "anchor": "docs/EngineFramework/Combat.md:73::- `0b04e28ad9b86e07` | `MUTATOR` | `epidemic::gameplay::combat::CombatService` | `[[nodiscard]] foundation::Result<void> RemoveCombatant(GameplayObjectRef subject,GameplayContext context={});`",
+            "kind": "contract"
+          }
+        ],
+        "rationale": "Combat ARCH-PORTS was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-RESPONSIBILITY": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:5::## Responsibility",
+            "kind": "architecture"
+          }
+        ],
+        "rationale": "Combat ARCH-RESPONSIBILITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-SINGLE-OWNER": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:5::## Responsibility",
+            "kind": "architecture"
+          },
+          {
+            "anchor": "docs/EngineFramework/Combat.md:21::## Authoritative state",
+            "kind": "state"
+          }
+        ],
+        "rationale": "Combat ARCH-SINGLE-OWNER was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-EXTERNAL": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:73::- `0b04e28ad9b86e07` | `MUTATOR` | `epidemic::gameplay::combat::CombatService` | `[[nodiscard]] foundation::Result<void> RemoveCombatant(GameplayObjectRef subject,GameplayContext context={});`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "docs/EngineFramework/Combat.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:94::auto result = s.CommitDamage(plan.Value(), {10});",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:95::if (!result || result.Value().resource_after_micro != 80'000'000)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat ATOMIC-EXTERNAL was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-MULTI": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Combat.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:38::health.default_maximum_micro = 100'000'000;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:41::if (!hp)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat ATOMIC-MULTI was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-RECONCILE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:73::- `0b04e28ad9b86e07` | `MUTATOR` | `epidemic::gameplay::combat::CombatService` | `[[nodiscard]] foundation::Result<void> RemoveCombatant(GameplayObjectRef subject,GameplayContext context={});`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "docs/EngineFramework/Combat.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Combat.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:38::health.default_maximum_micro = 100'000'000;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:41::if (!hp)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat ATOMIC-RECONCILE was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-SINGLE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Combat.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:38::health.default_maximum_micro = 100'000'000;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:41::if (!hp)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat ATOMIC-SINGLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-ALLOWED": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:82::s.Freeze();",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:86::if (!s.RegisterCombatant(target, {{hp.Value(), 100'000'000, 100'000'000}, {posture_id.Value(), 10'000'000, 10'000'000}}))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat LIFE-ALLOWED was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-FORBIDDEN": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:116::auto rejected = s.CommitDamage(stale.Value(), {30});",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:117::if (rejected || !rejected.GetError().HasCode(\"gameplay.stale_revision\"))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat LIFE-FORBIDDEN was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-RETRY-CLEANUP": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Combat.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:38::health.default_maximum_micro = 100'000'000;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:41::if (!hp)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat LIFE-RETRY-CLEANUP was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-SHUTDOWN": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:127::auto cancellable = s.PrepareDamage(Request(attacker, target, physical.Value(), health_profile_id.Value(), 1'000'000, 50));",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:128::if (!cancellable || !s.CancelDamagePlan(cancellable.Value().id))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat LIFE-SHUTDOWN was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-CANDIDATE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Combat.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:174::auto snap = s.CaptureSnapshot();",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:181::if (!rr || !rp || !rd || !rh || !rpost || !restored.SetPreparePolicy({GameplayDuration{5}}))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat PERSIST-CANDIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-CONTINUITY": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Combat.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:184::if (!restored.RestoreSnapshot(snap))",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:184::if (!restored.RestoreSnapshot(snap))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat PERSIST-CONTINUITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-FAILURE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Combat.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Combat.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:38::health.default_maximum_micro = 100'000'000;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:41::if (!hp)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat PERSIST-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-SNAPSHOT": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Combat.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:174::auto snap = s.CaptureSnapshot();",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:181::if (!rr || !rp || !rd || !rh || !rpost || !restored.SetPreparePolicy({GameplayDuration{5}}))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat PERSIST-SNAPSHOT was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-VALIDATE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Combat.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:184::if (!restored.RestoreSnapshot(snap))",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:184::if (!restored.RestoreSnapshot(snap))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat PERSIST-VALIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-COUNTERS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:117::if (rejected || !rejected.GetError().HasCode(\"gameplay.stale_revision\"))",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:117::if (rejected || !rejected.GetError().HasCode(\"gameplay.stale_revision\"))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat STATE-COUNTERS was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-INDEXES": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:16::DamageRequest Request(GameplayObjectRef attacker, GameplayObjectRef target, DamageTypeId damage,",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:16::DamageRequest Request(GameplayObjectRef attacker, GameplayObjectRef target, DamageTypeId damage,"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat STATE-INDEXES was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-NO-FALSE-PUBLISH": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Combat.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:38::health.default_maximum_micro = 100'000'000;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:41::if (!hp)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat STATE-NO-FALSE-PUBLISH was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-NOOP": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:73::- `0b04e28ad9b86e07` | `MUTATOR` | `epidemic::gameplay::combat::CombatService` | `[[nodiscard]] foundation::Result<void> RemoveCombatant(GameplayObjectRef subject,GameplayContext context={});`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:41::if (!hp)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:41::if (!hp)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat STATE-NOOP was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-PRIMARY": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:16::DamageRequest Request(GameplayObjectRef attacker, GameplayObjectRef target, DamageTypeId damage,",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:16::DamageRequest Request(GameplayObjectRef attacker, GameplayObjectRef target, DamageTypeId damage,"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat STATE-PRIMARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-BOUNDARY": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:223::if (huge_reservation || !huge_reservation.GetError().HasCode(\"gameplay.combat.resource_unavailable\"))",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:223::if (huge_reservation || !huge_reservation.GetError().HasCode(\"gameplay.combat.resource_unavailable\"))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat TEST-BOUNDARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-CALLBACK-FAILURE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Combat.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:38::health.default_maximum_micro = 100'000'000;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:41::if (!hp)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat TEST-CALLBACK-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-DUPLICATE": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:101::auto superseding_second = s.PrepareDamage(Request(attacker, target, physical.Value(), health_profile_id.Value(), 10'000'000, 20));",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:102::if (!superseding_second)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat TEST-DUPLICATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-EMPTY": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:214::restored.FindResourceReservation(resource_reservation.Value()) != nullptr)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:215::return 39;"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat TEST-EMPTY was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-HAPPY": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:58::health_profile.target_resource = hp.Value();",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:66::if (!health_profile_id)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat TEST-HAPPY was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-INVALID": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:105::if (superseded_commit || !superseded_commit.GetError().HasCode(\"gameplay.combat.plan_unknown\"))",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:105::if (superseded_commit || !superseded_commit.GetError().HasCode(\"gameplay.combat.plan_unknown\"))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat TEST-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-REGRESSION": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:38::health.default_maximum_micro = 100'000'000;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:41::if (!hp)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat TEST-REGRESSION was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-STALE": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:111::auto stale = s.PrepareDamage(Request(attacker, target, physical.Value(), health_profile_id.Value(), 10'000'000, 30));",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:112::if (!stale)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat TEST-STALE was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-WRONG-LIFECYCLE": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:127::auto cancellable = s.PrepareDamage(Request(attacker, target, physical.Value(), health_profile_id.Value(), 1'000'000, 50));",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:128::if (!cancellable || !s.CancelDamagePlan(cancellable.Value().id))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkCombatTests"
+          }
+        ],
+        "rationale": "Combat TEST-WRONG-LIFECYCLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkCombatTests assertion recorded above.",
+        "status": "PASS"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Construction": {
+      "API-CLASSIFIED": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:73::- `012b9f789b28565f` | `MUTATOR` | `epidemic::gameplay::construction::IConstructionCostProvider` | `[[nodiscard]] virtual foundation::Result<ConstructionCostReservation> Reserve(GameplayObjectRef actor,const ConstructionCost&cost,const GameplayContext&context)=0;`",
+            "kind": "contract"
+          }
+        ],
+        "rationale": "Construction API-CLASSIFIED was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-FAILURE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:73::- `012b9f789b28565f` | `MUTATOR` | `epidemic::gameplay::construction::IConstructionCostProvider` | `[[nodiscard]] virtual foundation::Result<ConstructionCostReservation> Reserve(GameplayObjectRef actor,const ConstructionCost&cost,const GameplayContext&context)=0;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "docs/EngineFramework/Construction.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:229::if (instant_commit || !instant_commit.GetError().HasCode(\"gameplay.construction.id_exhausted\"))",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:229::if (instant_commit || !instant_commit.GetError().HasCode(\"gameplay.construction.id_exhausted\"))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction API-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-INVALID": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:73::- `012b9f789b28565f` | `MUTATOR` | `epidemic::gameplay::construction::IConstructionCostProvider` | `[[nodiscard]] virtual foundation::Result<ConstructionCostReservation> Reserve(GameplayObjectRef actor,const ConstructionCost&cost,const GameplayContext&context)=0;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:117::auto stale = c.PreparePlacementPlan(sreq);",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:118::if (!stale)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction API-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-OVERLOADS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:73::- `012b9f789b28565f` | `MUTATOR` | `epidemic::gameplay::construction::IConstructionCostProvider` | `[[nodiscard]] virtual foundation::Result<ConstructionCostReservation> Reserve(GameplayObjectRef actor,const ConstructionCost&cost,const GameplayContext&context)=0;`",
+            "kind": "contract"
+          }
+        ],
+        "rationale": "Construction API-OVERLOADS was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-PRECONDITIONS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:73::- `012b9f789b28565f` | `MUTATOR` | `epidemic::gameplay::construction::IConstructionCostProvider` | `[[nodiscard]] virtual foundation::Result<ConstructionCostReservation> Reserve(GameplayObjectRef actor,const ConstructionCost&cost,const GameplayContext&context)=0;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:22::if (request.target.area)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:22::if (request.target.area)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction API-PRECONDITIONS was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-SUCCESS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:73::- `012b9f789b28565f` | `MUTATOR` | `epidemic::gameplay::construction::IConstructionCostProvider` | `[[nodiscard]] virtual foundation::Result<ConstructionCostReservation> Reserve(GameplayObjectRef actor,const ConstructionCost&cost,const GameplayContext&context)=0;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:30::return foundation::Result<PlacementSemanticProjection>::Success(projection);",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:30::return foundation::Result<PlacementSemanticProjection>::Success(projection);"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction API-SUCCESS was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-DIRECT-DEPS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:5::## Responsibility",
+            "kind": "architecture"
+          }
+        ],
+        "rationale": "Construction ARCH-DIRECT-DEPS was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-PORTS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:5::## Responsibility",
+            "kind": "architecture"
+          },
+          {
+            "anchor": "docs/EngineFramework/Construction.md:73::- `012b9f789b28565f` | `MUTATOR` | `epidemic::gameplay::construction::IConstructionCostProvider` | `[[nodiscard]] virtual foundation::Result<ConstructionCostReservation> Reserve(GameplayObjectRef actor,const ConstructionCost&cost,const GameplayContext&context)=0;`",
+            "kind": "contract"
+          }
+        ],
+        "rationale": "Construction ARCH-PORTS was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-RESPONSIBILITY": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:5::## Responsibility",
+            "kind": "architecture"
+          }
+        ],
+        "rationale": "Construction ARCH-RESPONSIBILITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-SINGLE-OWNER": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:5::## Responsibility",
+            "kind": "architecture"
+          },
+          {
+            "anchor": "docs/EngineFramework/Construction.md:21::## Authoritative state",
+            "kind": "state"
+          }
+        ],
+        "rationale": "Construction ARCH-SINGLE-OWNER was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-EXTERNAL": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:73::- `012b9f789b28565f` | `MUTATOR` | `epidemic::gameplay::construction::IConstructionCostProvider` | `[[nodiscard]] virtual foundation::Result<ConstructionCostReservation> Reserve(GameplayObjectRef actor,const ConstructionCost&cost,const GameplayContext&context)=0;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "docs/EngineFramework/Construction.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:284::const auto provider_failure_result = provider_failure_service.PreparePlacementPlan(req);",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:284::const auto provider_failure_result = provider_failure_service.PreparePlacementPlan(req);"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction ATOMIC-EXTERNAL was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-MULTI": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Construction.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:134::auto snap = c.CaptureSnapshot();",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:136::if (!restored.RegisterPlacementDefinition(free_def))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction ATOMIC-MULTI was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-RECONCILE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:73::- `012b9f789b28565f` | `MUTATOR` | `epidemic::gameplay::construction::IConstructionCostProvider` | `[[nodiscard]] virtual foundation::Result<ConstructionCostReservation> Reserve(GameplayObjectRef actor,const ConstructionCost&cost,const GameplayContext&context)=0;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "docs/EngineFramework/Construction.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Construction.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:46::free_def.commit_policy = PlacementCommitPolicy::CreateSite;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:47::if (!c.RegisterPlacementDefinition(free_def))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction ATOMIC-RECONCILE was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-SINGLE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Construction.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:134::auto snap = c.CaptureSnapshot();",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:136::if (!restored.RegisterPlacementDefinition(free_def))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction ATOMIC-SINGLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-ALLOWED": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:46::free_def.commit_policy = PlacementCommitPolicy::CreateSite;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:47::if (!c.RegisterPlacementDefinition(free_def))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction LIFE-ALLOWED was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-FORBIDDEN": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:106::if (!c.PruneTerminalSite(site.Value()))",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:106::if (!c.PruneTerminalSite(site.Value()))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction LIFE-FORBIDDEN was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-RETRY-CLEANUP": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Construction.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:125::if (!c.ReleaseSocket(socket_reservation.Value()))",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:125::if (!c.ReleaseSocket(socket_reservation.Value()))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction LIFE-RETRY-CLEANUP was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-SHUTDOWN": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:106::if (!c.PruneTerminalSite(site.Value()))",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:106::if (!c.PruneTerminalSite(site.Value()))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction LIFE-SHUTDOWN was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-CANDIDATE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Construction.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:134::auto snap = c.CaptureSnapshot();",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:136::if (!restored.RegisterPlacementDefinition(free_def))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction PERSIST-CANDIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-CONTINUITY": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Construction.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:143::if (!restored.RestoreSnapshot(std::move(snap)))",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:143::if (!restored.RestoreSnapshot(std::move(snap)))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction PERSIST-CONTINUITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-FAILURE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Construction.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Construction.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:143::if (!restored.RestoreSnapshot(std::move(snap)))",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:143::if (!restored.RestoreSnapshot(std::move(snap)))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction PERSIST-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-SNAPSHOT": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Construction.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:134::auto snap = c.CaptureSnapshot();",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:136::if (!restored.RegisterPlacementDefinition(free_def))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction PERSIST-SNAPSHOT was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-VALIDATE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Construction.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:143::if (!restored.RestoreSnapshot(std::move(snap)))",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:143::if (!restored.RestoreSnapshot(std::move(snap)))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction PERSIST-VALIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-COUNTERS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:21::projection.revision = {1};",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:22::if (request.target.area)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction STATE-COUNTERS was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-INDEXES": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:22::if (request.target.area)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:22::if (request.target.area)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction STATE-INDEXES was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-NO-FALSE-PUBLISH": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Construction.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:134::auto snap = c.CaptureSnapshot();",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:136::if (!restored.RegisterPlacementDefinition(free_def))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction STATE-NO-FALSE-PUBLISH was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-NOOP": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:73::- `012b9f789b28565f` | `MUTATOR` | `epidemic::gameplay::construction::IConstructionCostProvider` | `[[nodiscard]] virtual foundation::Result<ConstructionCostReservation> Reserve(GameplayObjectRef actor,const ConstructionCost&cost,const GameplayContext&context)=0;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:22::if (request.target.area)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:22::if (request.target.area)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction STATE-NOOP was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-PRIMARY": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:22::if (request.target.area)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:22::if (request.target.area)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction STATE-PRIMARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-BOUNDARY": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:260::if (overflow_plan || !overflow_plan.GetError().HasCode(\"gameplay.time_overflow\") ||",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:260::if (overflow_plan || !overflow_plan.GetError().HasCode(\"gameplay.time_overflow\") ||"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction TEST-BOUNDARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-CALLBACK-FAILURE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Construction.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:286::if (provider_failure_result ||",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:286::if (provider_failure_result ||"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction TEST-CALLBACK-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-DUPLICATE": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:22::if (request.target.area)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:22::if (request.target.area)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction TEST-DUPLICATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-EMPTY": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:88::if (!committed || !committed.Value().site.IsValid() || !committed.Value().outputs.empty())",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:88::if (!committed || !committed.Value().site.IsValid() || !committed.Value().outputs.empty())"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction TEST-EMPTY was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-HAPPY": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:30::return foundation::Result<PlacementSemanticProjection>::Success(projection);",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:30::return foundation::Result<PlacementSemanticProjection>::Success(projection);"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction TEST-HAPPY was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-INVALID": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:22::if (request.target.area)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:22::if (request.target.area)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction TEST-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-REGRESSION": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:22::if (request.target.area)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:22::if (request.target.area)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction TEST-REGRESSION was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-STALE": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:21::projection.revision = {1};",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:22::if (request.target.area)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction TEST-STALE was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-WRONG-LIFECYCLE": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:106::if (!c.PruneTerminalSite(site.Value()))",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:106::if (!c.PruneTerminalSite(site.Value()))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkConstructionTests"
+          }
+        ],
+        "rationale": "Construction TEST-WRONG-LIFECYCLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkConstructionTests assertion recorded above.",
+        "status": "PASS"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Progression": {
+      "API-CLASSIFIED": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:73::- `01d0fe0cb35fabdc` | `MUTATOR` | `epidemic::gameplay::progression::ProgressionService` | `[[nodiscard]] foundation::Result<AttributeTypeId> RegisterAttribute(AttributeDefinition definition);`",
+            "kind": "contract"
+          }
+        ],
+        "rationale": "Progression API-CLASSIFIED was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-FAILURE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:73::- `01d0fe0cb35fabdc` | `MUTATOR` | `epidemic::gameplay::progression::ProgressionService` | `[[nodiscard]] foundation::Result<AttributeTypeId> RegisterAttribute(AttributeDefinition definition);`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "docs/EngineFramework/Progression.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:58::strength.default_micro = 1'000'000;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:62::if (!sid)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression API-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-INVALID": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:73::- `01d0fe0cb35fabdc` | `MUTATOR` | `epidemic::gameplay::progression::ProgressionService` | `[[nodiscard]] foundation::Result<AttributeTypeId> RegisterAttribute(AttributeDefinition definition);`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:188::auto invalid_snapshot = s.CaptureSnapshot();",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:191::if (!invalid_restore_target.RegisterAttribute(strength) || !invalid_restore_target.RegisterAttribute(power) ||"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression API-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-OVERLOADS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:73::- `01d0fe0cb35fabdc` | `MUTATOR` | `epidemic::gameplay::progression::ProgressionService` | `[[nodiscard]] foundation::Result<AttributeTypeId> RegisterAttribute(AttributeDefinition definition);`",
+            "kind": "contract"
+          }
+        ],
+        "rationale": "Progression API-OVERLOADS was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-PRECONDITIONS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:73::- `01d0fe0cb35fabdc` | `MUTATOR` | `epidemic::gameplay::progression::ProgressionService` | `[[nodiscard]] foundation::Result<AttributeTypeId> RegisterAttribute(AttributeDefinition definition);`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:188::auto invalid_snapshot = s.CaptureSnapshot();",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:191::if (!invalid_restore_target.RegisterAttribute(strength) || !invalid_restore_target.RegisterAttribute(power) ||"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression API-PRECONDITIONS was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-SUCCESS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:73::- `01d0fe0cb35fabdc` | `MUTATOR` | `epidemic::gameplay::progression::ProgressionService` | `[[nodiscard]] foundation::Result<AttributeTypeId> RegisterAttribute(AttributeDefinition definition);`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:68::power.derived_terms.push_back({sid.Value(), 2'000'000});",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:70::if (!pid)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression API-SUCCESS was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-DIRECT-DEPS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:5::## Responsibility",
+            "kind": "architecture"
+          }
+        ],
+        "rationale": "Progression ARCH-DIRECT-DEPS was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-PORTS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:5::## Responsibility",
+            "kind": "architecture"
+          },
+          {
+            "anchor": "docs/EngineFramework/Progression.md:73::- `01d0fe0cb35fabdc` | `MUTATOR` | `epidemic::gameplay::progression::ProgressionService` | `[[nodiscard]] foundation::Result<AttributeTypeId> RegisterAttribute(AttributeDefinition definition);`",
+            "kind": "contract"
+          }
+        ],
+        "rationale": "Progression ARCH-PORTS was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-RESPONSIBILITY": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:5::## Responsibility",
+            "kind": "architecture"
+          }
+        ],
+        "rationale": "Progression ARCH-RESPONSIBILITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-SINGLE-OWNER": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:5::## Responsibility",
+            "kind": "architecture"
+          },
+          {
+            "anchor": "docs/EngineFramework/Progression.md:21::## Authoritative state",
+            "kind": "state"
+          }
+        ],
+        "rationale": "Progression ARCH-SINGLE-OWNER was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-EXTERNAL": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:73::- `01d0fe0cb35fabdc` | `MUTATOR` | `epidemic::gameplay::progression::ProgressionService` | `[[nodiscard]] foundation::Result<AttributeTypeId> RegisterAttribute(AttributeDefinition definition);`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "docs/EngineFramework/Progression.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:145::s.CommitProgressGrant(reserved.Value());",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:148::if (!after_commit || after_commit.Value().progress_micro != 200)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression ATOMIC-EXTERNAL was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-MULTI": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Progression.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:27::bool SameProfile(const ProgressionProfileSnapshot& a, const ProgressionProfileSnapshot& b)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:29::return a.subject == b.subject && a.base_attributes == b.base_attributes &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression ATOMIC-MULTI was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-RECONCILE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:73::- `01d0fe0cb35fabdc` | `MUTATOR` | `epidemic::gameplay::progression::ProgressionService` | `[[nodiscard]] foundation::Result<AttributeTypeId> RegisterAttribute(AttributeDefinition definition);`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "docs/EngineFramework/Progression.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Progression.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:58::strength.default_micro = 1'000'000;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:62::if (!sid)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression ATOMIC-RECONCILE was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-SINGLE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Progression.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:27::bool SameProfile(const ProgressionProfileSnapshot& a, const ProgressionProfileSnapshot& b)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:29::return a.subject == b.subject && a.base_attributes == b.base_attributes &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression ATOMIC-SINGLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-ALLOWED": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:81::if (!perkid || !s.Freeze())",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:81::if (!perkid || !s.Freeze())"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression LIFE-ALLOWED was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-FORBIDDEN": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:191::if (!invalid_restore_target.RegisterAttribute(strength) || !invalid_restore_target.RegisterAttribute(power) ||",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:191::if (!invalid_restore_target.RegisterAttribute(strength) || !invalid_restore_target.RegisterAttribute(power) ||"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression LIFE-FORBIDDEN was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-RETRY-CLEANUP": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Progression.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:58::strength.default_micro = 1'000'000;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:62::if (!sid)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression LIFE-RETRY-CLEANUP was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-SHUTDOWN": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:191::if (!invalid_restore_target.RegisterAttribute(strength) || !invalid_restore_target.RegisterAttribute(power) ||",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:191::if (!invalid_restore_target.RegisterAttribute(strength) || !invalid_restore_target.RegisterAttribute(power) ||"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression LIFE-SHUTDOWN was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-CANDIDATE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Progression.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:27::bool SameProfile(const ProgressionProfileSnapshot& a, const ProgressionProfileSnapshot& b)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:29::return a.subject == b.subject && a.base_attributes == b.base_attributes &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression PERSIST-CANDIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-CONTINUITY": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Progression.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:37::return a.sequence == b.sequence && a.kind == b.kind && a.subject == b.subject && a.attribute == b.attribute &&",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:37::return a.sequence == b.sequence && a.kind == b.kind && a.subject == b.subject && a.attribute == b.attribute &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression PERSIST-CONTINUITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-FAILURE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Progression.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Progression.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:58::strength.default_micro = 1'000'000;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:62::if (!sid)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression PERSIST-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-SNAPSHOT": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Progression.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:105::auto snap = s.CaptureSnapshot();",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:111::if (!rs || !rp || !rt || !rk || !restored.Freeze() || !restored.RestoreSnapshot(std::move(snap)))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression PERSIST-SNAPSHOT was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-VALIDATE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Progression.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:111::if (!rs || !rp || !rt || !rk || !restored.Freeze() || !restored.RestoreSnapshot(std::move(snap)))",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:111::if (!rs || !rp || !rt || !rk || !restored.Freeze() || !restored.RestoreSnapshot(std::move(snap)))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression PERSIST-VALIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-COUNTERS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:17::return a.id == b.id && a.progress_micro == b.progress_micro && a.rank == b.rank && a.revision == b.revision;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:17::return a.id == b.id && a.progress_micro == b.progress_micro && a.rank == b.rank && a.revision == b.revision;"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression STATE-COUNTERS was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-INDEXES": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:22::return a.id == b.id && a.target == b.target && a.operation == b.operation && a.value_micro == b.value_micro &&",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:22::return a.id == b.id && a.target == b.target && a.operation == b.operation && a.value_micro == b.value_micro &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression STATE-INDEXES was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-NO-FALSE-PUBLISH": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Progression.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:27::bool SameProfile(const ProgressionProfileSnapshot& a, const ProgressionProfileSnapshot& b)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:29::return a.subject == b.subject && a.base_attributes == b.base_attributes &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression STATE-NO-FALSE-PUBLISH was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-NOOP": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:73::- `01d0fe0cb35fabdc` | `MUTATOR` | `epidemic::gameplay::progression::ProgressionService` | `[[nodiscard]] foundation::Result<AttributeTypeId> RegisterAttribute(AttributeDefinition definition);`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:175::ProgressionModifier duplicate_modifier = explicit_modifier;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:177::if (s.AddModifier(actor_b, duplicate_modifier))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression STATE-NOOP was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-PRIMARY": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:22::return a.id == b.id && a.target == b.target && a.operation == b.operation && a.value_micro == b.value_micro &&",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:22::return a.id == b.id && a.target == b.target && a.operation == b.operation && a.value_micro == b.value_micro &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression STATE-PRIMARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-BOUNDARY": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:12::return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), pred);",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:12::return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), pred);"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression TEST-BOUNDARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-CALLBACK-FAILURE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Progression.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:58::strength.default_micro = 1'000'000;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:62::if (!sid)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression TEST-CALLBACK-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-DUPLICATE": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:175::ProgressionModifier duplicate_modifier = explicit_modifier;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:177::if (s.AddModifier(actor_b, duplicate_modifier))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression TEST-DUPLICATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-EMPTY": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:12::return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), pred);",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:12::return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), pred);"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression TEST-EMPTY was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-HAPPY": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:68::power.derived_terms.push_back({sid.Value(), 2'000'000});",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:70::if (!pid)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression TEST-HAPPY was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-INVALID": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:188::auto invalid_snapshot = s.CaptureSnapshot();",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:191::if (!invalid_restore_target.RegisterAttribute(strength) || !invalid_restore_target.RegisterAttribute(power) ||"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression TEST-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-REGRESSION": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:58::strength.default_micro = 1'000'000;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:62::if (!sid)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression TEST-REGRESSION was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-STALE": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:17::return a.id == b.id && a.progress_micro == b.progress_micro && a.rank == b.rank && a.revision == b.revision;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:17::return a.id == b.id && a.progress_micro == b.progress_micro && a.rank == b.rank && a.revision == b.revision;"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression TEST-STALE was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-WRONG-LIFECYCLE": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:191::if (!invalid_restore_target.RegisterAttribute(strength) || !invalid_restore_target.RegisterAttribute(power) ||",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:191::if (!invalid_restore_target.RegisterAttribute(strength) || !invalid_restore_target.RegisterAttribute(power) ||"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkProgressionTests"
+          }
+        ],
+        "rationale": "Progression TEST-WRONG-LIFECYCLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkProgressionTests assertion recorded above.",
+        "status": "PASS"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Traversal": {
+      "API-CLASSIFIED": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:73::- `03d324ae2fd245c1` | `QUERY` | `epidemic::gameplay::traversal::TraversalProfileId` | `[[nodiscard]] constexpr auto operator<=>(const TraversalProfileId&)const noexcept=default;`",
+            "kind": "contract"
+          }
+        ],
+        "rationale": "Traversal API-CLASSIFIED was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-FAILURE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:73::- `03d324ae2fd245c1` | `QUERY` | `epidemic::gameplay::traversal::TraversalProfileId` | `[[nodiscard]] constexpr auto operator<=>(const TraversalProfileId&)const noexcept=default;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:105::p.default_mode = walk;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:108::if (!s.RegisterProfile(p))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal API-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-INVALID": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:73::- `03d324ae2fd245c1` | `QUERY` | `epidemic::gameplay::traversal::TraversalProfileId` | `[[nodiscard]] constexpr auto operator<=>(const TraversalProfileId&)const noexcept=default;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:133::if (s.CanUseMode(actor, swim).kind != TraversalResultKind::Rejected)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:133::if (s.CanUseMode(actor, swim).kind != TraversalResultKind::Rejected)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal API-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-OVERLOADS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:73::- `03d324ae2fd245c1` | `QUERY` | `epidemic::gameplay::traversal::TraversalProfileId` | `[[nodiscard]] constexpr auto operator<=>(const TraversalProfileId&)const noexcept=default;`",
+            "kind": "contract"
+          }
+        ],
+        "rationale": "Traversal API-OVERLOADS was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-PRECONDITIONS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:73::- `03d324ae2fd245c1` | `QUERY` | `epidemic::gameplay::traversal::TraversalProfileId` | `[[nodiscard]] constexpr auto operator<=>(const TraversalProfileId&)const noexcept=default;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:133::if (s.CanUseMode(actor, swim).kind != TraversalResultKind::Rejected)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:133::if (s.CanUseMode(actor, swim).kind != TraversalResultKind::Rejected)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal API-PRECONDITIONS was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "API-SUCCESS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:73::- `03d324ae2fd245c1` | `QUERY` | `epidemic::gameplay::traversal::TraversalProfileId` | `[[nodiscard]] constexpr auto operator<=>(const TraversalProfileId&)const noexcept=default;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:146::if (!s.RevokeCapability(grant.Value()) || s.CanUseMode(actor, swim).kind != TraversalResultKind::Rejected)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:146::if (!s.RevokeCapability(grant.Value()) || s.CanUseMode(actor, swim).kind != TraversalResultKind::Rejected)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal API-SUCCESS was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-DIRECT-DEPS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:5::## Responsibility",
+            "kind": "architecture"
+          }
+        ],
+        "rationale": "Traversal ARCH-DIRECT-DEPS was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-PORTS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:5::## Responsibility",
+            "kind": "architecture"
+          },
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:73::- `03d324ae2fd245c1` | `QUERY` | `epidemic::gameplay::traversal::TraversalProfileId` | `[[nodiscard]] constexpr auto operator<=>(const TraversalProfileId&)const noexcept=default;`",
+            "kind": "contract"
+          }
+        ],
+        "rationale": "Traversal ARCH-PORTS was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-RESPONSIBILITY": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:5::## Responsibility",
+            "kind": "architecture"
+          }
+        ],
+        "rationale": "Traversal ARCH-RESPONSIBILITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ARCH-SINGLE-OWNER": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:5::## Responsibility",
+            "kind": "architecture"
+          },
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:21::## Authoritative state",
+            "kind": "state"
+          }
+        ],
+        "rationale": "Traversal ARCH-SINGLE-OWNER was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-EXTERNAL": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:73::- `03d324ae2fd245c1` | `QUERY` | `epidemic::gameplay::traversal::TraversalProfileId` | `[[nodiscard]] constexpr auto operator<=>(const TraversalProfileId&)const noexcept=default;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:356::for (const auto point : {test_seam::FaultPoint::RestoreCandidateBuild, test_seam::FaultPoint::RestoreBeforeCommit})",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:362::if (service.RestoreSnapshot(std::move(target)) || !SameSnapshot(before, service.CaptureSnapshot()))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal ATOMIC-EXTERNAL was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-MULTI": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:57::bool SameSnapshot(const TraversalSnapshot& a, const TraversalSnapshot& b)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:59::return SameVector(a.states, b.states, SameState) && SameVector(a.sessions, b.sessions, SameSession) &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal ATOMIC-MULTI was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-RECONCILE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:73::- `03d324ae2fd245c1` | `QUERY` | `epidemic::gameplay::traversal::TraversalProfileId` | `[[nodiscard]] constexpr auto operator<=>(const TraversalProfileId&)const noexcept=default;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:105::p.default_mode = walk;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:108::if (!s.RegisterProfile(p))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal ATOMIC-RECONCILE was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "ATOMIC-SINGLE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:57::bool SameSnapshot(const TraversalSnapshot& a, const TraversalSnapshot& b)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:59::return SameVector(a.states, b.states, SameState) && SameVector(a.sessions, b.sessions, SameSession) &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal ATOMIC-SINGLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-ALLOWED": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:27::a.state == b.state && a.started_at == b.started_at && a.revision == b.revision;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:32::return a.id == b.id && a.subject == b.subject && a.from_area == b.from_area && a.to_area == b.to_area &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal LIFE-ALLOWED was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-FORBIDDEN": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:128::if (!s.IsFrozen())",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:128::if (!s.IsFrozen())"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal LIFE-FORBIDDEN was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-RETRY-CLEANUP": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:105::p.default_mode = walk;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:108::if (!s.RegisterProfile(p))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal LIFE-RETRY-CLEANUP was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "LIFE-SHUTDOWN": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:33::## State machines",
+            "kind": "lifecycle"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:78::TraversalProfileId profile)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:84::if (!s.RegisterMode(w))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal LIFE-SHUTDOWN was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-CANDIDATE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:57::bool SameSnapshot(const TraversalSnapshot& a, const TraversalSnapshot& b)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:59::return SameVector(a.states, b.states, SameState) && SameVector(a.sessions, b.sessions, SameSession) &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal PERSIST-CANDIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-CONTINUITY": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:52::return a.sequence == b.sequence && a.kind == b.kind && a.subject == b.subject && a.mode == b.mode &&",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:52::return a.sequence == b.sequence && a.kind == b.kind && a.subject == b.subject && a.mode == b.mode &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal PERSIST-CONTINUITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-FAILURE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:105::p.default_mode = walk;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:108::if (!s.RegisterProfile(p))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal PERSIST-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-SNAPSHOT": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:214::auto snap = s.CaptureSnapshot();",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:219::if (r.id == route.Value())"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal PERSIST-SNAPSHOT was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "PERSIST-VALIDATE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:41::## Snapshot/restore contract",
+            "kind": "persistence"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:228::if (!restored.RestoreSnapshot(snap))",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:228::if (!restored.RestoreSnapshot(snap))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal PERSIST-VALIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-COUNTERS": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:21::a.active_session == b.active_session && a.revision == b.revision;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:26::return a.id == b.id && a.subject == b.subject && a.mode == b.mode && a.route == b.route &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal STATE-COUNTERS was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-INDEXES": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:160::if (s.FindCarrierPassengers(horse).size() != 1)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:160::if (s.FindCarrierPassengers(horse).size() != 1)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal STATE-INDEXES was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-NO-FALSE-PUBLISH": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:57::bool SameSnapshot(const TraversalSnapshot& a, const TraversalSnapshot& b)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:59::return SameVector(a.states, b.states, SameState) && SameVector(a.sessions, b.sessions, SameSession) &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal STATE-NO-FALSE-PUBLISH was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-NOOP": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:73::- `03d324ae2fd245c1` | `QUERY` | `epidemic::gameplay::traversal::TraversalProfileId` | `[[nodiscard]] constexpr auto operator<=>(const TraversalProfileId&)const noexcept=default;`",
+            "kind": "contract"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:78::TraversalProfileId profile)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:84::if (!s.RegisterMode(w))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal STATE-NOOP was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "STATE-PRIMARY": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:21::## Authoritative state",
+            "kind": "state"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:57::bool SameSnapshot(const TraversalSnapshot& a, const TraversalSnapshot& b)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:59::return SameVector(a.states, b.states, SameState) && SameVector(a.sessions, b.sessions, SameSession) &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal STATE-PRIMARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-BOUNDARY": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:414::max_guard.RemoveRoute(guard_route_id.Value()) || max_guard.StartSession(guard_actor, walk, {}, {}, {}) ||",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:414::max_guard.RemoveRoute(guard_route_id.Value()) || max_guard.StartSession(guard_actor, walk, {}, {}, {}) ||"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal TEST-BOUNDARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-CALLBACK-FAILURE": {
+        "evidence": [
+          {
+            "anchor": "docs/EngineFramework/Traversal.md:57::## Local invariants",
+            "kind": "fault"
+          },
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:105::p.default_mode = walk;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:108::if (!s.RegisterProfile(p))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal TEST-CALLBACK-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-DUPLICATE": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:78::TraversalProfileId profile)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:84::if (!s.RegisterMode(w))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal TEST-DUPLICATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-EMPTY": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:15::return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), pred);",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:15::return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), pred);"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal TEST-EMPTY was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-HAPPY": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:146::if (!s.RevokeCapability(grant.Value()) || s.CanUseMode(actor, swim).kind != TraversalResultKind::Rejected)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:146::if (!s.RevokeCapability(grant.Value()) || s.CanUseMode(actor, swim).kind != TraversalResultKind::Rejected)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal TEST-HAPPY was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-INVALID": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:133::if (s.CanUseMode(actor, swim).kind != TraversalResultKind::Rejected)",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:133::if (s.CanUseMode(actor, swim).kind != TraversalResultKind::Rejected)"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal TEST-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-REGRESSION": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:105::p.default_mode = walk;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:108::if (!s.RegisterProfile(p))"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal TEST-REGRESSION was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-STALE": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:21::a.active_session == b.active_session && a.revision == b.revision;",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:26::return a.id == b.id && a.subject == b.subject && a.mode == b.mode && a.route == b.route &&"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal TEST-STALE was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      },
+      "TEST-WRONG-LIFECYCLE": {
+        "evidence": [
+          {
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:128::if (!s.IsFrozen())",
+            "assertions": [
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:128::if (!s.IsFrozen())"
+            ],
+            "kind": "test",
+            "target": "EpidemicGameFrameworkTraversalTests"
+          }
+        ],
+        "rationale": "Traversal TEST-WRONG-LIFECYCLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkTraversalTests assertion recorded above.",
+        "status": "PASS"
+      }
+    }
+  },
+  "official_windows_gate": "PENDING_SERIAL_INTEGRATION",
+  "schema_version": 1,
+  "status": "BLOCK_LOCAL_REVIEWED"
+}

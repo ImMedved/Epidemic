@@ -9,10 +9,18 @@
 // function participates in the module API and what state it observes or mutates.
 
 #include <cstdint>
+#include <cstddef>
 #include <vector>
 
 namespace epidemic::runtime
 {
+// Public mutation limits keep caller-controlled metadata bounded before the catalog
+// performs normalization/copies. std::bad_alloc outside these validated limits remains
+// a process-level allocation failure; Assets does not invent a module-local OOM policy.
+inline constexpr std::size_t kMaxAssetPathBytes = 4096;
+inline constexpr std::size_t kMaxAssetDependencies = 4096;
+inline constexpr std::size_t kMaxAssetTags = 1024;
+
 struct AssetDependency
 {
     AssetId asset_id{};
@@ -30,6 +38,9 @@ struct AssetMetadata
     std::vector<AssetDependency> dependencies;
     std::vector<foundation::StringId> tags;
     std::uint64_t content_hash = 0;
+    // Per-asset metadata/content schema version. This is not a catalog-global
+    // revision counter and does not change when unrelated assets are registered.
+    // Version zero is reserved as invalid for registered metadata.
     std::uint32_t version = 0;
 };
-} 
+}

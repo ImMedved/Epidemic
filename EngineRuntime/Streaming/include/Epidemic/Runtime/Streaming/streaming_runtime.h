@@ -23,6 +23,10 @@ class IStreamingRuntime
     [[nodiscard]] virtual foundation::Result<void> ReleaseDemand(StreamingDemandHandle demand) = 0;
     [[nodiscard]] virtual StreamingState GetChunkState(ChunkId chunk) const = 0;
     virtual void SetBudget(const StreamingBudget& budget) = 0;
+    // Runtime-owned allocation failure during Tick preparation/staging is not converted
+    // into a semantic request failure and may surface as std::bad_alloc. Preparation faults
+    // happen before request mutation; an already accepted external step is retained in
+    // private retry state so retry cannot repeat that external side effect.
     [[nodiscard]] virtual StreamingTickResult Tick() = 0;
     [[nodiscard]] virtual std::optional<StreamingProgress> GetProgress(StreamingRequestHandle request) const = 0;
     [[nodiscard]] virtual StreamingStatistics GetStatistics() const = 0;

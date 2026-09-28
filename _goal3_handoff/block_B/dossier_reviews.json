@@ -1,0 +1,585 @@
+{
+  "modules": {
+    "EngineRuntime/Assets": {
+      "Authoritative state": {
+        "evidence": [
+          "docs/EngineRuntime/modules/assets.md",
+          "docs/freeze/engineruntime_assets_audit.md"
+        ],
+        "rationale": "Metadata map and sealed flag are authoritative.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "evidence": [
+          "docs/EngineRuntime/modules/assets.md",
+          "docs/freeze/engineruntime_assets_audit.md"
+        ],
+        "rationale": "Only RuntimeFoundation/Foundation dependencies; no Runtime peer-major dependency.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "evidence": [
+          "docs/EngineRuntime/modules/assets.md",
+          "docs/freeze/engineruntime_assets_audit.md"
+        ],
+        "rationale": "No secondary cache/index; type/tag/dependency queries derive detached results from authoritative metadata.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "evidence": [
+          "docs/EngineRuntime/modules/assets.md",
+          "docs/freeze/engineruntime_assets_audit.md"
+        ],
+        "rationale": "No external callback/backend execution boundary.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "evidence": [
+          "docs/EngineRuntime/modules/assets.md",
+          "docs/freeze/engineruntime_assets_audit.md"
+        ],
+        "rationale": "Path/dependency/tag limits and iterative deep dependency traversal are tested.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "evidence": [
+          "docs/EngineRuntime/modules/assets.md",
+          "docs/freeze/engineruntime_assets_audit.md"
+        ],
+        "rationale": "AssetId is caller-provided immutable identity; no module-generated generation/revision/cursor space.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "evidence": [
+          "docs/EngineRuntime/modules/assets.md",
+          "docs/freeze/engineruntime_assets_audit.md"
+        ],
+        "rationale": "ID/type/state/location/version/tag/dependency/path constraints and manifest requiredness/cycle rules are enforced.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "evidence": [
+          "docs/EngineRuntime/modules/assets.md",
+          "docs/freeze/engineruntime_assets_audit.md"
+        ],
+        "rationale": "Catalog is runtime/bootstrap state; no local persistence contract.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "evidence": [
+          "docs/EngineRuntime/modules/assets.md",
+          "docs/freeze/engineruntime_assets_audit.md"
+        ],
+        "rationale": "24 public callables across Assets headers; existing 15/15 dossier conclusions revalidated after allocator-harness refactor.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "evidence": [
+          "docs/EngineRuntime/modules/assets.md",
+          "docs/freeze/engineruntime_assets_audit.md"
+        ],
+        "rationale": "RegisterAsset and Seal are fully covered including semantic allocation fault seams.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "evidence": [
+          "docs/EngineRuntime/modules/assets.md",
+          "docs/freeze/engineruntime_assets_audit.md"
+        ],
+        "rationale": "Find/Contains/Resolve/dependency manifest queries are deterministic detached observations.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "evidence": [
+          "docs/EngineRuntime/modules/assets.md",
+          "docs/freeze/engineruntime_assets_audit.md"
+        ],
+        "rationale": "Owns immutable-after-registration asset metadata catalog and logical locations, not payload residency or filesystem I/O.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "evidence": [
+          "docs/EngineRuntime/modules/assets.md",
+          "docs/freeze/engineruntime_assets_audit.md"
+        ],
+        "rationale": "No snapshot/restore API; persistence restoration would use normal validated registrations.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "evidence": [
+          "docs/EngineRuntime/modules/assets.md",
+          "docs/freeze/engineruntime_assets_audit.md"
+        ],
+        "rationale": "Mutable registration phase transitions monotonically to sealed; repeated Seal is idempotent.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "evidence": [
+          "docs/EngineRuntime/modules/assets.md",
+          "docs/freeze/engineruntime_assets_audit.md"
+        ],
+        "rationale": "Runtime-thread mutation contract; no concurrent read/write guarantee before sealing.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineRuntime/Persistence": {
+      "Authoritative state": {
+        "evidence": [
+          "docs/EngineRuntime/modules/persistence.md"
+        ],
+        "rationale": "objects/tombstones/lazy rules/zone overrides/dirty ids/revision and backend snapshot are authoritative; transaction candidates stay separate until commit.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "evidence": [
+          "docs/EngineRuntime/modules/persistence.md"
+        ],
+        "rationale": "CMake links only RuntimeFoundation and Foundation; peer Runtime majors are forbidden.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "evidence": [
+          "docs/EngineRuntime/modules/persistence.md"
+        ],
+        "rationale": "Dirty/query projections are derived observations; detached-result and failure tests guard against partial publication.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "evidence": [
+          "docs/EngineRuntime/modules/persistence.md"
+        ],
+        "rationale": "IPersistenceBackend Result/exception/atomic CommitSnapshot boundary is explicitly covered, including the generated external-boundary candidate.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "evidence": [
+          "docs/EngineRuntime/modules/persistence.md"
+        ],
+        "rationale": "Revision overflow and container allocation boundaries are checked; no per-tick budget applies.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "evidence": [
+          "docs/EngineRuntime/modules/persistence.md"
+        ],
+        "rationale": "PersistenceRevision and durable object/lazy-rule IDs are reviewed; conflict/exhaustion/duplicate-ID behavior is tested.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "evidence": [
+          "docs/EngineRuntime/modules/persistence.md"
+        ],
+        "rationale": "Active record/tombstone exclusion, lazy target validity, delete cleanup, deterministic snapshots and enum/protection domains are enforced.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "evidence": [
+          "docs/EngineRuntime/modules/persistence.md"
+        ],
+        "rationale": "PersistenceSnapshot is durable carrier; transaction operation/candidate state is transient until successful commit.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "evidence": [
+          "docs/EngineRuntime/modules/persistence.md"
+        ],
+        "rationale": "Persistence public headers/types were reviewed and self-contained compilation is part of verification.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "evidence": [
+          "docs/EngineRuntime/modules/persistence.md"
+        ],
+        "rationale": "Transactions, administrative restore operations and backend commit boundaries are reviewed with strong-commit/failure tests.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "evidence": [
+          "docs/EngineRuntime/modules/persistence.md"
+        ],
+        "rationale": "Record/tombstone/lazy/zone queries and snapshots are deterministic detached observations.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "evidence": [
+          "docs/EngineRuntime/modules/persistence.md"
+        ],
+        "rationale": "Owns durable object records, tombstones, lazy rules, zone overrides and atomic persistence transaction flow.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "evidence": [
+          "docs/EngineRuntime/modules/persistence.md"
+        ],
+        "rationale": "Backend Load/CommitSnapshot and candidate validation/publish flow are reviewed for validate-first, failure atomicity and roundtrip.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "evidence": [
+          "docs/EngineRuntime/modules/persistence.md"
+        ],
+        "rationale": "PersistenceState, SaveTransactionState, LazyRuleState and durability enum domains have explicit terminal/validation behavior.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "evidence": [
+          "docs/EngineRuntime/modules/persistence.md"
+        ],
+        "rationale": "Synchronous store/transaction contract; no worker thread or concurrent mutation API is exposed.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineRuntime/Resources": {
+      "Authoritative state": {
+        "evidence": [
+          "docs/EngineRuntime/modules/resources.md",
+          "docs/freeze/engineruntime_resources_audit.md"
+        ],
+        "rationale": "ResourceSlot state and loader registry membership/frozen flag are authoritative.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "evidence": [
+          "docs/EngineRuntime/modules/resources.md",
+          "docs/freeze/engineruntime_resources_audit.md"
+        ],
+        "rationale": "Only Foundation and RuntimeFoundation direct dependencies; no Runtime peer-major dependency.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "evidence": [
+          "docs/EngineRuntime/modules/resources.md",
+          "docs/freeze/engineruntime_resources_audit.md"
+        ],
+        "rationale": "Load/wait queues, dependency graph, loading set and resident-byte aggregate are coordination/derived state with rollback/retry coverage.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "evidence": [
+          "docs/EngineRuntime/modules/resources.md",
+          "docs/freeze/engineruntime_resources_audit.md"
+        ],
+        "rationale": "IResourceLoader::Load is the external boundary; Result/exception and accepted-once staging are covered although scanner heuristic does not emit a child row.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "evidence": [
+          "docs/EngineRuntime/modules/resources.md",
+          "docs/freeze/engineruntime_resources_audit.md"
+        ],
+        "rationale": "Item/time/byte/memory budgets, accounting overflow, generation/refcount/acquisition exhaustion and deep dependency traversal are tested.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "evidence": [
+          "docs/EngineRuntime/modules/resources.md",
+          "docs/freeze/engineruntime_resources_audit.md"
+        ],
+        "rationale": "ResourceAcquisitionId, resource generation and refcount are bounded and tested for exhaustion/ABA.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "evidence": [
+          "docs/EngineRuntime/modules/resources.md",
+          "docs/freeze/engineruntime_resources_audit.md"
+        ],
+        "rationale": "Lease uniqueness, generation validity, payload/accounting consistency, dependency and queue ownership are enforced.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "evidence": [
+          "docs/EngineRuntime/modules/resources.md",
+          "docs/freeze/engineruntime_resources_audit.md"
+        ],
+        "rationale": "All module state is transient runtime resource state; no persistence API.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "evidence": [
+          "docs/EngineRuntime/modules/resources.md",
+          "docs/freeze/engineruntime_resources_audit.md"
+        ],
+        "rationale": "37 public callables across Resources headers; self-contained compilation is part of verification.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "evidence": [
+          "docs/EngineRuntime/modules/resources.md",
+          "docs/freeze/engineruntime_resources_audit.md"
+        ],
+        "rationale": "Register/freeze, request/process/release/evict/budget mutators are covered by module regressions.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "evidence": [
+          "docs/EngineRuntime/modules/resources.md",
+          "docs/freeze/engineruntime_resources_audit.md"
+        ],
+        "rationale": "Loader/resource/handle/state/readiness/payload/statistics queries expose deterministic current observations.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "evidence": [
+          "docs/EngineRuntime/modules/resources.md",
+          "docs/freeze/engineruntime_resources_audit.md"
+        ],
+        "rationale": "Owns runtime resource residency/loading, consumer/dependency leases, dependency graph, budgets and eviction.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "evidence": [
+          "docs/EngineRuntime/modules/resources.md",
+          "docs/freeze/engineruntime_resources_audit.md"
+        ],
+        "rationale": "No snapshot/restore API or module persistence contract.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "evidence": [
+          "docs/EngineRuntime/modules/resources.md",
+          "docs/freeze/engineruntime_resources_audit.md"
+        ],
+        "rationale": "ResourceState lifecycle plus mutable-to-frozen loader registry and retryable Evicting cleanup are reviewed.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "evidence": [
+          "docs/EngineRuntime/modules/resources.md",
+          "docs/freeze/engineruntime_resources_audit.md"
+        ],
+        "rationale": "Public mutation is runtime-thread-only; no worker thread is created by the module.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineRuntime/Serialization": {
+      "Authoritative state": {
+        "evidence": [
+          "docs/EngineRuntime/modules/serialization.md"
+        ],
+        "rationale": "Writer tree/finalized state and serializer/migration registry maps/frozen flags are authoritative.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "evidence": [
+          "docs/EngineRuntime/modules/serialization.md"
+        ],
+        "rationale": "CMake links only RuntimeFoundation and Foundation; peer Runtime majors are forbidden.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "evidence": [
+          "docs/EngineRuntime/modules/serialization.md"
+        ],
+        "rationale": "No independent derived cache/index was found; registry maps are authoritative and reader/writer traversal context is transient.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "evidence": [
+          "docs/EngineRuntime/modules/serialization.md"
+        ],
+        "rationale": "ISerializer/IMigration/IArchiveFactory callbacks and exception/Result boundaries are covered; no accepted external work is left ambiguously owned.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "evidence": [
+          "docs/EngineRuntime/modules/serialization.md"
+        ],
+        "rationale": "No module-specific runtime budget; deep nested/archive and migration graph cases are covered without a hidden fixed traversal limit.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "evidence": [
+          "docs/EngineRuntime/modules/serialization.md"
+        ],
+        "rationale": "No generated handle/generation/revision space; SchemaVersion/type IDs are caller/document values and reader/writer contexts are structural cursors.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "evidence": [
+          "docs/EngineRuntime/modules/serialization.md"
+        ],
+        "rationale": "Duplicate/empty fields, complete arrays, exact migration type/schema, immutable finalized writer and failure atomicity are enforced.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "evidence": [
+          "docs/EngineRuntime/modules/serialization.md"
+        ],
+        "rationale": "SerializedDocument is the immutable archive carrier; writer/reader contexts and migration candidates are transient staging.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "evidence": [
+          "docs/EngineRuntime/modules/serialization.md"
+        ],
+        "rationale": "Serialization public headers and callable surface were reviewed; self-contained compilation is part of verification.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "evidence": [
+          "docs/EngineRuntime/modules/serialization.md"
+        ],
+        "rationale": "Writer structural/scalar writes, registry registration/freeze, deserialize/serialize helpers and migration application are covered.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "evidence": [
+          "docs/EngineRuntime/modules/serialization.md"
+        ],
+        "rationale": "Document metadata, reader values and registry lookup/path queries expose the tested invariants.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "evidence": [
+          "docs/EngineRuntime/modules/serialization.md"
+        ],
+        "rationale": "Owns versioned archive documents, serializer registration and schema migration; no persistence/world ownership.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "evidence": [
+          "docs/EngineRuntime/modules/serialization.md"
+        ],
+        "rationale": "No runtime checkpoint/restore API; SerializedDocument is the explicit serialization carrier rather than module live-state snapshot.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "evidence": [
+          "docs/EngineRuntime/modules/serialization.md"
+        ],
+        "rationale": "Writer/reader structural context, array completeness, immutable-after-finalize and registry mutable-to-frozen transitions are tested.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "evidence": [
+          "docs/EngineRuntime/modules/serialization.md"
+        ],
+        "rationale": "Synchronous module contract; no worker threads or concurrent mutation guarantee is exposed.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineRuntime/World": {
+      "Authoritative state": {
+        "evidence": [
+          "docs/EngineRuntime/modules/world.md",
+          "EngineRuntime/World/docs/Block_E_Evidence_Fragment_2026-09-21.md"
+        ],
+        "rationale": "Regions/chunks, states/revisions, object records, persistent index, demotion tokens and monotonic allocators are authoritative.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "evidence": [
+          "docs/EngineRuntime/modules/world.md",
+          "EngineRuntime/World/docs/Block_E_Evidence_Fragment_2026-09-21.md"
+        ],
+        "rationale": "Only RuntimeFoundation/Foundation direct dependencies; no World-to-Scene/Persistence/Resources peer-major link.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "evidence": [
+          "docs/EngineRuntime/modules/world.md",
+          "EngineRuntime/World/docs/Block_E_Evidence_Fragment_2026-09-21.md"
+        ],
+        "rationale": "persistent_to_runtime_ is an authoritative lookup index updated atomically; query vectors are detached/sorted observations.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "evidence": [
+          "docs/EngineRuntime/modules/world.md",
+          "EngineRuntime/World/docs/Block_E_Evidence_Fragment_2026-09-21.md"
+        ],
+        "rationale": "No external callback/backend/provider boundary in World Goal 3.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "evidence": [
+          "docs/EngineRuntime/modules/world.md",
+          "EngineRuntime/World/docs/Block_E_Evidence_Fragment_2026-09-21.md"
+        ],
+        "rationale": "No per-tick budget; uint64 identity/revision bounds and containment/query traversal behavior are reviewed.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "evidence": [
+          "docs/EngineRuntime/modules/world.md",
+          "EngineRuntime/World/docs/Block_E_Evidence_Fragment_2026-09-21.md"
+        ],
+        "rationale": "RuntimeObjectId and token IDs are monotonic/non-reused; object/chunk revisions use checked progression.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "evidence": [
+          "docs/EngineRuntime/modules/world.md",
+          "EngineRuntime/World/docs/Block_E_Evidence_Fragment_2026-09-21.md"
+        ],
+        "rationale": "Topology ownership, persistent ID uniqueness, placement/container constraints, compatibility and terminal tombstones are enforced.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "evidence": [
+          "docs/EngineRuntime/modules/world.md",
+          "EngineRuntime/World/docs/Block_E_Evidence_Fragment_2026-09-21.md"
+        ],
+        "rationale": "World records carry persistence-tier/tombstone semantics, while no module-local persistence serialization is owned here.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "evidence": [
+          "docs/EngineRuntime/modules/world.md",
+          "EngineRuntime/World/docs/Block_E_Evidence_Fragment_2026-09-21.md"
+        ],
+        "rationale": "53 public callables; chunk.h hash delta is structural-field neutral and self-contained compilation is part of verification.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "evidence": [
+          "docs/EngineRuntime/modules/world.md",
+          "EngineRuntime/World/docs/Block_E_Evidence_Fragment_2026-09-21.md"
+        ],
+        "rationale": "Topology registration/state, object command variants, materialize/demote and token operations are covered.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "evidence": [
+          "docs/EngineRuntime/modules/world.md",
+          "EngineRuntime/World/docs/Block_E_Evidence_Fragment_2026-09-21.md"
+        ],
+        "rationale": "Region/chunk/object lookup, deterministic object queries and snapshots expose required invariants.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "evidence": [
+          "docs/EngineRuntime/modules/world.md",
+          "EngineRuntime/World/docs/Block_E_Evidence_Fragment_2026-09-21.md"
+        ],
+        "rationale": "Owns neutral logical world topology, object records, placement/reality/residency/persistence tier and materialization/demotion state.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "evidence": [
+          "docs/EngineRuntime/modules/world.md",
+          "EngineRuntime/World/docs/Block_E_Evidence_Fragment_2026-09-21.md"
+        ],
+        "rationale": "Chunk/object snapshots are detached observations; no restore/checkpoint API in Goal 3.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "evidence": [
+          "docs/EngineRuntime/modules/world.md",
+          "EngineRuntime/World/docs/Block_E_Evidence_Fragment_2026-09-21.md"
+        ],
+        "rationale": "Topology one-way freeze plus object reality/residency/tombstone and demotion-token lifecycles are reviewed.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "evidence": [
+          "docs/EngineRuntime/modules/world.md",
+          "EngineRuntime/World/docs/Block_E_Evidence_Fragment_2026-09-21.md"
+        ],
+        "rationale": "Synchronous contract with no exposed concurrent-call guarantee or synchronization primitive.",
+        "status": "REVIEWED"
+      }
+    }
+  },
+  "schema_version": 1
+}

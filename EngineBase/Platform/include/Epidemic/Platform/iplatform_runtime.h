@@ -32,7 +32,7 @@ class IPlatformRuntime
     // Returns immutable process information captured by the runtime.
     [[nodiscard]] virtual const ProcessInfo &GetProcessInfo() const = 0;
 
-    // Returns the runtime's current notion of wall-clock time.
+    // Returns the runtime's monotonic steady-clock time for engine timing.
     [[nodiscard]] virtual epidemic::foundation::TimePoint Now() const = 0;
 
     // Loads a dynamic library from disk and returns either the library object or an Error.

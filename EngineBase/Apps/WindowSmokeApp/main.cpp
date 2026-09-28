@@ -12,6 +12,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace
@@ -30,10 +31,11 @@ TValue RequireValue(epidemic::foundation::Result<TValue> result)
 } // namespace
 
 // Composes the baseline platform runtime, creates a window, and runs until a close request is observed.
-int main()
+int main(int argc, char **argv)
 {
     try
     {
+        const bool smoke_mode = argc == 2 && std::string_view(argv[1]) == "--smoke";
         epidemic::core::Application application;
         static_cast<void>(epidemic::enginebase::RegisterEngineBase(
             application, {.runtime_name = "EpidemicWindowSmokeApp", .log_module = "WindowSmokeApp"}));
@@ -48,7 +50,12 @@ int main()
             epidemic::platform::WindowCreateInfo{"Epidemic Window Smoke",
                                                  static_cast<std::uint32_t>(configuration->GetDefaultWindowWidth().value_or(1280)),
                                                  static_cast<std::uint32_t>(configuration->GetDefaultWindowHeight().value_or(720)),
-                                                 true}));
+                                                 !smoke_mode}));
+
+        if (smoke_mode)
+        {
+            application.SetFrameLimit(1);
+        }
 
         epidemic::enginebase::RegisterPlatformFrameLoop(application);
         epidemic::enginebase::RegisterFrameThrottle(application, std::chrono::milliseconds(16));

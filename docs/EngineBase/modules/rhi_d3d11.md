@@ -6,18 +6,32 @@ RHI_D3D11 реализует публичные RHI contracts поверх Direc
 
 ## Публичная граница
 
-Модуль экспортирует factory создания D3D11 device. Все дальнейшее использование происходит через `IRhiDevice`, `IRhiCommandContext` и `IRhiSwapChain`. Upper code не должен выполнять downcast к D3D11 implementation.
+Модуль экспортирует только `CreateD3D11RhiDevice`. Успешный factory возвращает `std::shared_ptr<IRhiDevice>`. Все дальнейшее использование происходит через `IRhiDevice`, `IRhiCommandContext` и `IRhiSwapChain`; concrete D3D11 classes остаются private и upper code не должен выполнять downcast.
+
+## Ownership и lifetime
+
+`D3D11DeviceState` совместно удерживается device wrapper, command contexts и swap chains. Поэтому уже созданные child objects сохраняют native device/context lifetime после уничтожения wrapper. Active presentation target хранится как `weak_ptr`, поэтому уничтожение swap chain не оставляет dangling binding.
+
+COM resources хранятся только в `Microsoft::WRL::ComPtr`. Factory и swap-chain construction публикуют объект наружу только после полного успешного создания. Ошибка после частичного native acquisition уничтожает локальный candidate и освобождает уже полученные COM references через RAII.
+
+## Resize, minimize и render target
+
+Zero-area resize отклоняется до `IDXGISwapChain::ResizeBuffers` с `rhi.invalid_swap_chain_size`. Это является baseline contract для minimized surface. После успешного `ResizeBuffers` старые back-buffer/RTV references уже освобождены, а новый RTV создаётся заново. Пока recreation не завершена, `Present` и `Clear` возвращают `rhi.d3d11.recreate_required`; silent clear без render target запрещён. Повторный валидный `Resize` является recovery path.
+
+## Device lost и ошибки backend
+
+DXGI device-loss результаты (`DXGI_ERROR_DEVICE_HUNG`, `DXGI_ERROR_DEVICE_REMOVED`, `DXGI_ERROR_DEVICE_RESET`, `DXGI_ERROR_DRIVER_INTERNAL_ERROR`) переводятся в стабильный `rhi.d3d11.device_lost`. После этого новая native work не публикуется через device/context/swap-chain APIs. Остальные native failures возвращаются через operation-specific `Result` errors с HRESULT diagnostics.
+
+При `enable_debug_validation=true` backend запрашивает `D3D11_CREATE_DEVICE_DEBUG`. Отсутствующий SDK debug layer возвращается как отдельный controlled error `rhi.d3d11.debug_layer_unavailable`; backend не молча откатывается на non-debug device.
 
 ## Поведение
 
-Backend создает device и immediate context, формирует swap chain для окна, восстанавливает render target после resize и поддерживает clear/present smoke flow. Debug validation включается через descriptor composition root.
+Backend создаёт D3D11 device и immediate context, формирует DXGI swap chain для live Win32 window, создаёт back buffer и RTV, поддерживает begin/clear/end/present flow и атомарный recovery после resize/recreation failures. Non-window native handle отклоняется до вызова DXGI `CreateSwapChain`.
 
-## Ограничения и стабильность
+## Threading
 
-Модуль не содержит полноценный renderer и не обещает поддержку других платформ. D3D11 implementation может изменяться внутри, пока сохраняет RHI contract. RHI не зависит от RHI_D3D11.
+Для Goal 2 внутренней thread-safety гарантии нет. Mutable D3D11 operations требуют внешней сериализации. Полная concurrency qualification относится к Goal 6.
 
 ## Карта публичных заголовков
 
-Этот раздел служит быстрым индексом объявлений. Семантика и инварианты описаны выше; точные сигнатуры остаются источником истины в public headers.
-
-- `d3d11_rhi_device.h`: factory-функции или backend implementation без отдельного публичного типа.
+- `d3d11_rhi_device.h`: `CreateD3D11RhiDevice`.

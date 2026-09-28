@@ -15,4 +15,6 @@ target_link_libraries(EpidemicCore
     PUBLIC EpidemicFoundation EpidemicDiagnostics
 )
 
+target_compile_definitions(EpidemicCore PRIVATE EPIDEMIC_CORE_ENABLE_TEST_HOOKS=1)
+
 epidemic_configure_target(EpidemicCore)

@@ -1,0 +1,81 @@
+{
+  "block": "B03",
+  "defects": {
+    "G4-INFRA-001/B03": {
+      "fix": "Replaced all owned helper use with module-private source seams. No shared fault helper or CMake file was modified.",
+      "logical_id": "G4-INFRA-001",
+      "module": "B03 owned test surface",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:238::Check(!restored_under_fault, \"module-local restore fault must fail\");",
+      "regressions": {
+        "EpidemicGameFrameworkEconomyTests": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:400::\"failed lifecycle restore preserves live economy\");",
+        "EpidemicGameFrameworkEquipmentTests": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:218::Check(!restored_under_fault, \"module-local restore fault must fail\");",
+        "EpidemicGameFrameworkItemsInventoryTests": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:238::Check(!restored_under_fault, \"module-local restore fault must fail\");",
+        "EpidemicGameFrameworkLootTests": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:303::if (restored_under_fault)",
+        "EpidemicGameFrameworkProcessesTests": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:552::if (restored_under_fault || after.revision != allocation_before.revision ||",
+        "EpidemicGameFrameworkResourcesProductionSeparationTests": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_separation_tests.cpp:63::\"capability/plan restored\");",
+        "EpidemicGameFrameworkResourcesProductionTests": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:300::if (restored_under_fault || !SameCoreSnapshot(allocation_before, restored.CaptureSnapshot()))"
+      },
+      "root_cause": "Owned restore/allocation evidence used shared process-global allocator fault helpers.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkItemsInventoryTests",
+      "targets": [
+        "EpidemicGameFrameworkItemsInventoryTests",
+        "EpidemicGameFrameworkEquipmentTests",
+        "EpidemicGameFrameworkEconomyTests",
+        "EpidemicGameFrameworkProcessesTests",
+        "EpidemicGameFrameworkResourcesProductionTests",
+        "EpidemicGameFrameworkLootTests",
+        "EpidemicGameFrameworkResourcesProductionSeparationTests"
+      ]
+    },
+    "G4-PROC-001": {
+      "fix": "Portable integer ScaleProgressFloor computes floor(elapsed*1,000,000/total) without __int128 or floating point.",
+      "fix_symbol": "EngineFramework/GameplayWorldStateOwners/Processes/src/processes.cpp::ScaleProgressFloor / ProcessesService::EvaluateProgress",
+      "logical_id": "G4-PROC-001",
+      "module": "EngineFramework/GameplayWorldStateOwners/Processes",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:445::[[nodiscard]] bool TestExactProgressScaling()",
+      "regressions": {
+        "EpidemicGameFrameworkProcessesTests": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:445::[[nodiscard]] bool TestExactProgressScaling()"
+      },
+      "root_cause": "EvaluateProgress converted very large int64 durations through floating point; MSVC binary64 can round the exact one-tick-before-complete ratio up to 1,000,000.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkProcessesTests",
+      "targets": [
+        "EpidemicGameFrameworkProcessesTests"
+      ]
+    },
+    "G4-RESPROD-001": {
+      "fix": "All affected operations allocate/advance IDs from a staged generator and publish generator + revision only after fallible primary/index/journal staging succeeds.",
+      "fix_symbol": "EngineFramework/GameplayWorldStateOwners/ResourcesProduction/src/resources_production.cpp",
+      "logical_id": "G4-RESPROD-001",
+      "module": "EngineFramework/GameplayWorldStateOwners/ResourcesProduction",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:45::[[nodiscard]] bool TestRevisionExhaustionKeepsAllGenerators()",
+      "regressions": {
+        "EpidemicGameFrameworkResourcesProductionTests": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:45::[[nodiscard]] bool TestRevisionExhaustionKeepsAllGenerators()"
+      },
+      "root_cause": "Live monotonic ID generators advanced before revision/publication preflight on create/reserve/transfer paths.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkResourcesProductionTests",
+      "targets": [
+        "EpidemicGameFrameworkResourcesProductionTests"
+      ]
+    },
+    "G4-RESPROD-002": {
+      "fix": "Mutation paths stage journal and all fallible inserts before no-throw authoritative updates; private source-local fault seams cover each required publication phase.",
+      "fix_symbol": "EngineFramework/GameplayWorldStateOwners/ResourcesProduction/src/resources_production.cpp::TryStageJournal and staged mutation paths",
+      "logical_id": "G4-RESPROD-002",
+      "module": "EngineFramework/GameplayWorldStateOwners/ResourcesProduction",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:101::[[nodiscard]] bool TestPublicationFaultAtomicity()",
+      "regressions": {
+        "EpidemicGameFrameworkResourcesProductionTests": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:101::[[nodiscard]] bool TestPublicationFaultAtomicity()"
+      },
+      "root_cause": "Revision/state changes could precede fallible primary/index/journal publication, allowing partial state or an escaping allocation exception.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkResourcesProductionTests",
+      "targets": [
+        "EpidemicGameFrameworkResourcesProductionTests"
+      ]
+    }
+  },
+  "schema_version": 1
+}

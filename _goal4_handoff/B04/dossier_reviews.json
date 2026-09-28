@@ -1,0 +1,377 @@
+{
+  "modules": {
+    "EngineFramework/GameplayWorldStateOwners/Crime": {
+      "Authoritative state": {
+        "correction": "Reviewed primary records, generators, revisions and journal ownership.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Reviewed includes/link boundaries; no cross-block production dependency changes were introduced.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Reviewed derived indexes for consistency and rollback on failed publication.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "Admission external-boundary candidates: 0; none are owned by this B04 module.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Reviewed max generator/revision/change-sequence and module-specific capacity/budget boundaries.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Reviewed exhaustion and snapshot continuity for IDs, revisions and change cursors.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Reviewed stale identity, duplicate handling, revision and multi-container invariants.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "Reviewed local snapshot state versus derived/transient indexes; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Reviewed 100 admission callables; no callable IDs were added or removed by B04 changes.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "Reviewed 80 mutation obligations for success, no-op, invalid/failure and publication ordering.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Reviewed deterministic reads and index/query consistency against module tests.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Reviewed B04 ownership and module contract for Crime.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "Reviewed non-empty/invalid restore, generator/revision/cursor continuity and failed-restore atomicity.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Reviewed 1 lifecycle candidates and terminal/forbidden transitions.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "Reviewed as module-local gameplay state ownership; no stronger concurrency guarantee is asserted by Goal 4.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Encounters": {
+      "Authoritative state": {
+        "correction": "Reviewed primary records, generators, revisions and journal ownership.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Reviewed includes/link boundaries; no cross-block production dependency changes were introduced.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Reviewed derived indexes for consistency and rollback on failed publication.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "Admission external-boundary candidates: 0; none are owned by this B04 module.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Reviewed max generator/revision/change-sequence and module-specific capacity/budget boundaries.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Reviewed exhaustion and snapshot continuity for IDs, revisions and change cursors.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Reviewed stale identity, duplicate handling, revision and multi-container invariants.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "Reviewed local snapshot state versus derived/transient indexes; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Reviewed 70 admission callables; no callable IDs were added or removed by B04 changes.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "Reviewed 68 mutation obligations for success, no-op, invalid/failure and publication ordering.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Reviewed deterministic reads and index/query consistency against module tests.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Reviewed B04 ownership and module contract for Encounters.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "Reviewed non-empty/invalid restore, generator/revision/cursor continuity and failed-restore atomicity.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Reviewed 2 lifecycle candidates and terminal/forbidden transitions.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "Reviewed as module-local gameplay state ownership; no stronger concurrency guarantee is asserted by Goal 4.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/NeedsLife": {
+      "Authoritative state": {
+        "correction": "Reviewed primary records, generators, revisions and journal ownership.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Reviewed includes/link boundaries; no cross-block production dependency changes were introduced.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Reviewed derived indexes for consistency and rollback on failed publication.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "Admission external-boundary candidates: 0; none are owned by this B04 module.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Reviewed max generator/revision/change-sequence and module-specific capacity/budget boundaries.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Reviewed exhaustion and snapshot continuity for IDs, revisions and change cursors.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Reviewed stale identity, duplicate handling, revision and multi-container invariants.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "Reviewed local snapshot state versus derived/transient indexes; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Reviewed 65 admission callables; no callable IDs were added or removed by B04 changes.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "Reviewed 72 mutation obligations for success, no-op, invalid/failure and publication ordering.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Reviewed deterministic reads and index/query consistency against module tests.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Reviewed B04 ownership and module contract for NeedsLife.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "Reviewed non-empty/invalid restore, generator/revision/cursor continuity and failed-restore atomicity.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Reviewed 1 lifecycle candidates and terminal/forbidden transitions.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "Reviewed as module-local gameplay state ownership; no stronger concurrency guarantee is asserted by Goal 4.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Population": {
+      "Authoritative state": {
+        "correction": "Reviewed primary records, generators, revisions and journal ownership.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Reviewed includes/link boundaries; no cross-block production dependency changes were introduced.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Reviewed derived indexes for consistency and rollback on failed publication.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "Admission external-boundary candidates: 0; none are owned by this B04 module.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Reviewed max generator/revision/change-sequence and module-specific capacity/budget boundaries.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Reviewed exhaustion and snapshot continuity for IDs, revisions and change cursors.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Reviewed stale identity, duplicate handling, revision and multi-container invariants.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "Reviewed local snapshot state versus derived/transient indexes; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Reviewed 75 admission callables; no callable IDs were added or removed by B04 changes.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "Reviewed 80 mutation obligations for success, no-op, invalid/failure and publication ordering.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Reviewed deterministic reads and index/query consistency against module tests.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Reviewed B04 ownership and module contract for Population.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "Reviewed non-empty/invalid restore, generator/revision/cursor continuity and failed-restore atomicity.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Reviewed 2 lifecycle candidates and terminal/forbidden transitions.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "Reviewed as module-local gameplay state ownership; no stronger concurrency guarantee is asserted by Goal 4.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/RolesJobs": {
+      "Authoritative state": {
+        "correction": "Reviewed primary records, generators, revisions and journal ownership.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Reviewed includes/link boundaries; no cross-block production dependency changes were introduced.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Reviewed derived indexes for consistency and rollback on failed publication.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "Admission external-boundary candidates: 0; none are owned by this B04 module.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Reviewed max generator/revision/change-sequence and module-specific capacity/budget boundaries.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Reviewed exhaustion and snapshot continuity for IDs, revisions and change cursors.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Reviewed stale identity, duplicate handling, revision and multi-container invariants.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "Reviewed local snapshot state versus derived/transient indexes; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Reviewed 73 admission callables; no callable IDs were added or removed by B04 changes.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "Reviewed 80 mutation obligations for success, no-op, invalid/failure and publication ordering.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Reviewed deterministic reads and index/query consistency against module tests.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Reviewed B04 ownership and module contract for RolesJobs.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "Reviewed non-empty/invalid restore, generator/revision/cursor continuity and failed-restore atomicity.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Reviewed 5 lifecycle candidates and terminal/forbidden transitions.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "Reviewed as module-local gameplay state ownership; no stronger concurrency guarantee is asserted by Goal 4.",
+        "status": "REVIEWED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Society": {
+      "Authoritative state": {
+        "correction": "Reviewed primary records, generators, revisions and journal ownership.",
+        "status": "REVIEWED"
+      },
+      "Dependency list": {
+        "correction": "Reviewed includes/link boundaries; no cross-block production dependency changes were introduced.",
+        "status": "REVIEWED"
+      },
+      "Derived/cache/index state": {
+        "correction": "Reviewed derived indexes for consistency and rollback on failed publication.",
+        "status": "REVIEWED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "correction": "Admission external-boundary candidates: 0; none are owned by this B04 module.",
+        "status": "REVIEWED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "correction": "Reviewed max generator/revision/change-sequence and module-specific capacity/budget boundaries.",
+        "status": "REVIEWED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "correction": "Reviewed exhaustion and snapshot continuity for IDs, revisions and change cursors.",
+        "status": "REVIEWED"
+      },
+      "Local invariants": {
+        "correction": "Reviewed stale identity, duplicate handling, revision and multi-container invariants.",
+        "status": "REVIEWED"
+      },
+      "Persistent and transient state": {
+        "correction": "Reviewed local snapshot state versus derived/transient indexes; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
+      },
+      "Public headers and types": {
+        "correction": "Reviewed 62 admission callables; no callable IDs were added or removed by B04 changes.",
+        "status": "REVIEWED"
+      },
+      "Public mutation API": {
+        "correction": "Reviewed 56 mutation obligations for success, no-op, invalid/failure and publication ordering.",
+        "status": "REVIEWED"
+      },
+      "Read/query API for invariants": {
+        "correction": "Reviewed deterministic reads and index/query consistency against module tests.",
+        "status": "REVIEWED"
+      },
+      "Responsibility": {
+        "correction": "Reviewed B04 ownership and module contract for Society.",
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "correction": "Reviewed non-empty/invalid restore, generator/revision/cursor continuity and failed-restore atomicity.",
+        "status": "REVIEWED"
+      },
+      "State machines": {
+        "correction": "Reviewed 1 lifecycle candidates and terminal/forbidden transitions.",
+        "status": "REVIEWED"
+      },
+      "Threading contract": {
+        "correction": "Reviewed as module-local gameplay state ownership; no stronger concurrency guarantee is asserted by Goal 4.",
+        "status": "REVIEWED"
+      }
+    }
+  },
+  "schema_version": 1
+}

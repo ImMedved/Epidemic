@@ -1,23 +1,26 @@
-﻿#include "migration_registry.h"
+#include "migration_registry.h"
 
 #include "Epidemic/Runtime/Serialization/serialization_error.h"
 
 #include <algorithm>
+#include <exception>
+#include <new>
+#include <utility>
 #include <vector>
 
 namespace epidemic::runtime
 {
 namespace
 {
-[[nodiscard]] foundation::Result<void> MigrationFailure(std::string_view code, std::string_view message)
+[[nodiscard]] foundation::Result<void> MigrationFailure(std::string_view code, std::string_view message, std::string_view context = {})
 {
-    return foundation::Result<void>::Failure(CreateSerializationError(code, message));
+    return foundation::Result<void>::Failure(CreateSerializationError(code, message, context));
 }
 
 template <typename TValue>
-[[nodiscard]] foundation::Result<TValue> MigrationFailureValue(std::string_view code, std::string_view message)
+[[nodiscard]] foundation::Result<TValue> MigrationFailureValue(std::string_view code, std::string_view message, std::string_view context = {})
 {
-    return foundation::Result<TValue>::Failure(CreateSerializationError(code, message));
+    return foundation::Result<TValue>::Failure(CreateSerializationError(code, message, context));
 }
 
 [[nodiscard]] bool ContainsVersion(const std::vector<SchemaVersion>& versions, SchemaVersion version)
@@ -28,27 +31,63 @@ template <typename TValue>
 
 foundation::Result<void> MigrationRegistry::RegisterMigration(std::shared_ptr<const IMigration> migration)
 {
+    if (frozen_)
+    {
+        return MigrationFailure("serialization.registry_frozen", "migration registry is frozen");
+    }
     if (!migration)
     {
         return MigrationFailure("serialization.migration.null", "migration pointer must not be null");
     }
 
-    const MigrationKey key = migration->GetKey();
-    if (!key.type_id.IsValid())
+    try
     {
-        return MigrationFailure("serialization.migration.invalid_type", "migration must declare a valid type id");
-    }
-    if (key.from == key.to)
-    {
-        return MigrationFailure("serialization.migration.invalid_version", "migration must change schema version");
-    }
-    if (migrations_.contains(key))
-    {
-        return MigrationFailure("serialization.migration.duplicate_key", "migration key is already registered");
-    }
+        const MigrationKey key = migration->GetKey();
+        if (!key.type_id.IsValid())
+        {
+            return MigrationFailure("serialization.migration.invalid_type", "migration must declare a valid type id");
+        }
+        if (key.from == SchemaVersion{} || key.to == SchemaVersion{} || key.from == key.to)
+        {
+            return MigrationFailure("serialization.migration.invalid_version",
+                                    "migration must use non-zero, distinct schema versions");
+        }
+        if (migrations_.contains(key))
+        {
+            return MigrationFailure("serialization.migration.duplicate_key", "migration key is already registered");
+        }
 
-    migrations_.emplace(key, std::move(migration));
+        if (fail_next_registration_allocation_for_testing_)
+        {
+            fail_next_registration_allocation_for_testing_ = false;
+            throw std::bad_alloc{};
+        }
+        migrations_.emplace(key, std::move(migration));
+        return foundation::Result<void>::Success();
+    }
+    catch (const std::bad_alloc&)
+    {
+        return MigrationFailure("serialization.out_of_memory", "migration registration could not allocate state");
+    }
+    catch (const std::exception& error)
+    {
+        return MigrationFailure("serialization.migration.exception", "migration metadata callback threw", error.what());
+    }
+    catch (...)
+    {
+        return MigrationFailure("serialization.migration.exception", "migration metadata callback threw an unknown exception");
+    }
+}
+
+foundation::Result<void> MigrationRegistry::Freeze()
+{
+    frozen_ = true;
     return foundation::Result<void>::Success();
+}
+
+bool MigrationRegistry::IsFrozen() const noexcept
+{
+    return frozen_;
 }
 
 std::shared_ptr<const IMigration> MigrationRegistry::FindMigration(const MigrationKey& key) const
@@ -77,51 +116,79 @@ foundation::Result<std::vector<std::shared_ptr<const IMigration>>> MigrationRegi
     {
         return MigrationFailureValue<MigrationPath>("serialization.migration.invalid_type", "migration path type id must be valid");
     }
+    if (from == SchemaVersion{} || to == SchemaVersion{})
+    {
+        return MigrationFailureValue<MigrationPath>("serialization.migration.invalid_version",
+                                                    "migration path schema versions must be non-zero");
+    }
     if (from == to)
     {
         return foundation::Result<MigrationPath>::Success({});
     }
 
+    struct WorkItem
+    {
+        SchemaVersion current{};
+        MigrationPath path{};
+        std::vector<SchemaVersion> visited{};
+    };
+
+    std::vector<WorkItem> stack;
+    try
+    {
+        if (fail_next_path_allocation_for_testing_)
+        {
+            fail_next_path_allocation_for_testing_ = false;
+            throw std::bad_alloc{};
+        }
+        stack.push_back(WorkItem{from, {}, {from}});
+    }
+    catch (const std::bad_alloc&)
+    {
+        return MigrationFailureValue<MigrationPath>("serialization.out_of_memory", "migration path search could not allocate work stack");
+    }
+
     std::vector<MigrationPath> paths;
     bool cycle_detected = false;
-
-    auto search = [&](auto&& self, SchemaVersion current, MigrationPath& current_path, std::vector<SchemaVersion>& visited) -> void {
-        if (paths.size() > 1)
-        {
-            return;
-        }
+    while (!stack.empty() && paths.size() <= 1)
+    {
+        WorkItem item = std::move(stack.back());
+        stack.pop_back();
 
         for (const auto& [key, migration] : migrations_)
         {
-            if (key.type_id != type_id || !(key.from == current))
+            if (key.type_id != type_id || !(key.from == item.current))
             {
                 continue;
             }
 
-            if (ContainsVersion(visited, key.to))
+            if (ContainsVersion(item.visited, key.to))
             {
                 cycle_detected = true;
                 continue;
             }
 
-            current_path.push_back(migration);
-            if (key.to == to)
+            try
             {
-                paths.push_back(current_path);
+                MigrationPath next_path = item.path;
+                next_path.push_back(migration);
+                if (key.to == to)
+                {
+                    paths.push_back(std::move(next_path));
+                }
+                else
+                {
+                    std::vector<SchemaVersion> next_visited = item.visited;
+                    next_visited.push_back(key.to);
+                    stack.push_back(WorkItem{key.to, std::move(next_path), std::move(next_visited)});
+                }
             }
-            else
+            catch (const std::bad_alloc&)
             {
-                visited.push_back(key.to);
-                self(self, key.to, current_path, visited);
-                visited.pop_back();
+                return MigrationFailureValue<MigrationPath>("serialization.out_of_memory", "migration path search could not allocate path state");
             }
-            current_path.pop_back();
         }
-    };
-
-    MigrationPath current_path;
-    std::vector<SchemaVersion> visited{from};
-    search(search, from, current_path, visited);
+    }
 
     if (paths.empty())
     {
@@ -136,6 +203,6 @@ foundation::Result<std::vector<std::shared_ptr<const IMigration>>> MigrationRegi
         return MigrationFailureValue<MigrationPath>("serialization.migration.ambiguous_path", "migration path is ambiguous");
     }
 
-    return foundation::Result<MigrationPath>::Success(paths.front());
+    return foundation::Result<MigrationPath>::Success(std::move(paths.front()));
 }
 } // namespace epidemic::runtime

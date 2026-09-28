@@ -191,6 +191,8 @@ struct AnimationOptions
 {
     bool enable_mock_pose_evaluation = false;
     std::size_t event_capacity = 64;
+    std::size_t max_animators = 4096;
+    std::uint32_t max_skeleton_joints = 4096;
 };
 } // namespace epidemic::runtime::animation
 

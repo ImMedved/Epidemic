@@ -8,6 +8,7 @@ target_include_directories(EpidemicEngineBaseSupport
 
 target_link_libraries(EpidemicEngineBaseSupport
     PUBLIC
+        EpidemicFoundation
         EpidemicCore
         EpidemicMemory
         EpidemicDiagnostics

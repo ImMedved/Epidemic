@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Epidemic/Runtime/Resources/resource_loader_registry.h"
 
@@ -13,8 +13,11 @@ class ResourceLoaderRegistry final : public IResourceLoaderRegistry
     [[nodiscard]] IResourceLoader* FindLoader(ResourceType type) override;
     [[nodiscard]] const IResourceLoader* FindLoader(ResourceType type) const override;
     [[nodiscard]] bool HasLoader(ResourceType type) const override;
+    [[nodiscard]] foundation::Result<void> Freeze() override;
+    [[nodiscard]] bool IsFrozen() const noexcept override;
 
   private:
     std::unordered_map<foundation::StringId, IResourceLoader*> loaders_;
+    bool frozen_ = false;
 };
 } // namespace epidemic::runtime

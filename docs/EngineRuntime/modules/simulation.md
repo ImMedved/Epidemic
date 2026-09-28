@@ -20,7 +20,7 @@ World memory event имеет неотрицательное `happened_at`; TTL 
 
 ## Стабильность
 
-После финальных invariants модуль frozen. Конкретные NPC и economy jobs реализуются в GameFramework.
+Модуль прошёл локальную квалификацию Goal 3, обязательный MSVC Debug/Release pass и canonical evidence convergence и имеет статус `LOCAL_READY`. Статус `FROZEN` не присваивается до whole-engine qualification. Конкретные NPC и economy jobs реализуются в GameFramework.
 
 ## Карта публичных заголовков
 

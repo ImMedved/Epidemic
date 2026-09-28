@@ -7,9 +7,12 @@
 
 #include <optional>
 #include <unordered_map>
+#include <vector>
 
 namespace epidemic::runtime::renderer
 {
+struct RendererRuntimeTestAccess;
+
 class RendererRuntime final : public IRenderScene, public IViewSystem, public IRendererRuntime
 {
   public:
@@ -44,6 +47,8 @@ class RendererRuntime final : public IRenderScene, public IViewSystem, public IR
     [[nodiscard]] RenderFrameState GetFrameState() const override;
 
   private:
+    friend struct RendererRuntimeTestAccess;
+
     struct ProxyRecord
     {
         RenderProxyDesc desc{};
@@ -62,11 +67,23 @@ class RendererRuntime final : public IRenderScene, public IViewSystem, public IR
         ViewLifecycle lifecycle = ViewLifecycle::Active;
     };
 
+    struct PreparedProxyUpdate
+    {
+        RenderProxyId id{};
+        RenderTransformSnapshot transform{};
+        RenderProxyDirtyMask clear_dirty_flags = 0;
+    };
+
+    [[nodiscard]] foundation::Result<void> EnsureRunning() const;
     [[nodiscard]] foundation::Result<RenderTransformSnapshot> GetTransform(RenderTransformId node) const;
     [[nodiscard]] foundation::Result<void> AcquireProxyResources(ProxyRecord& record);
     [[nodiscard]] foundation::Result<void> ReleaseProxyResources(ProxyRecord& record);
     [[nodiscard]] foundation::Result<void> RefreshProxyTransform(ProxyRecord& record);
     [[nodiscard]] foundation::Result<void> RefreshProxyReadiness(ProxyRecord& record);
+    [[nodiscard]] foundation::Result<void> RecoverPendingFrame();
+    void AbortFrameAfterFailureNoThrow() noexcept;
+    void CommitPreparedFrameNoThrow() noexcept;
+    void ClearPreparedFrameNoThrow() noexcept;
     [[nodiscard]] ProxyRecord* FindProxy(RenderProxyId id);
     [[nodiscard]] const ProxyRecord* FindProxy(RenderProxyId id) const;
     [[nodiscard]] ViewRecord* FindView(ViewId id);
@@ -80,9 +97,14 @@ class RendererRuntime final : public IRenderScene, public IViewSystem, public IR
     std::unordered_map<ViewId, ViewRecord> views_;
     ViewId main_view_{};
     std::optional<RenderFrameContext> prepared_context_{};
+    std::vector<PreparedProxyUpdate> prepared_updates_{};
+    std::vector<RenderProxySubmission> prepared_submissions_{};
     RenderFrameState frame_state_ = RenderFrameState::NotPrepared;
+    bool frame_recovery_pending_ = false;
+    bool shutdown_started_ = false;
     bool shutdown_ = false;
     std::uint64_t next_proxy_value_ = 1;
     std::uint64_t next_view_value_ = 1;
+    bool fail_next_proxy_publication_for_testing_ = false;
 };
 } // namespace epidemic::runtime::renderer

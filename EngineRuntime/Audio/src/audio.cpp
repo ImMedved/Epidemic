@@ -2,6 +2,7 @@
 
 #include "Epidemic/Foundation/error.h"
 
+#include <exception>
 #include <utility>
 
 namespace epidemic::runtime::audio
@@ -14,10 +15,23 @@ foundation::Result<AudioServices> CreateAudioServices(AudioOptions options, Audi
             foundation::Error::Create("audio.backend_missing", "audio backend is required by production audio services"));
     }
 
-    const auto initialized = dependencies.backend->Initialize(AudioBackendOptions{true});
-    if (!initialized)
+    try
     {
-        return foundation::Result<AudioServices>::Failure(initialized.GetError());
+        const auto initialized = dependencies.backend->Initialize(AudioBackendOptions{true});
+        if (!initialized)
+        {
+            return foundation::Result<AudioServices>::Failure(initialized.GetError());
+        }
+    }
+    catch (const std::exception&)
+    {
+        return foundation::Result<AudioServices>::Failure(
+            foundation::Error::Create("audio.backend_exception", "audio backend threw during initialization"));
+    }
+    catch (...)
+    {
+        return foundation::Result<AudioServices>::Failure(
+            foundation::Error::Create("audio.backend_exception", "audio backend threw during initialization"));
     }
 
     auto backend = dependencies.backend;

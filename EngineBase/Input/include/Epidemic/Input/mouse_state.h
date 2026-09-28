@@ -5,6 +5,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 
 namespace epidemic::input
 {
@@ -50,19 +51,19 @@ class MouseState
     // Returns whether the specified button is currently held down.
     [[nodiscard]] bool IsButtonDown(MouseButton button) const noexcept
     {
-        return buttons_down_[ToIndex(button)];
+        return IsKnownMouseButton(button) ? buttons_down_[ToIndex(button)] : false;
     }
 
     // Returns whether the specified button was pressed during the current frame.
     [[nodiscard]] bool WasPressedThisFrame(MouseButton button) const noexcept
     {
-        return buttons_pressed_[ToIndex(button)];
+        return IsKnownMouseButton(button) ? buttons_pressed_[ToIndex(button)] : false;
     }
 
     // Returns whether the specified button was released during the current frame.
     [[nodiscard]] bool WasReleasedThisFrame(MouseButton button) const noexcept
     {
-        return buttons_released_[ToIndex(button)];
+        return IsKnownMouseButton(button) ? buttons_released_[ToIndex(button)] : false;
     }
 
     // Returns whether the owning window currently has focus.
@@ -80,8 +81,8 @@ class MouseState
     // Updates the cursor position and accumulates per-frame deltas.
     void SetPosition(std::int32_t x, std::int32_t y) noexcept
     {
-        delta_x_ += x - position_x_;
-        delta_y_ += y - position_y_;
+        delta_x_ = ClampToInt32(static_cast<std::int64_t>(delta_x_) + static_cast<std::int64_t>(x) - position_x_);
+        delta_y_ = ClampToInt32(static_cast<std::int64_t>(delta_y_) + static_cast<std::int64_t>(y) - position_y_);
         position_x_ = x;
         position_y_ = y;
     }
@@ -89,25 +90,34 @@ class MouseState
     // Adds one wheel delta contribution to the current frame.
     void AddWheelDelta(std::int32_t wheel_delta) noexcept
     {
-        wheel_delta_ += wheel_delta;
+        wheel_delta_ = ClampToInt32(static_cast<std::int64_t>(wheel_delta_) + wheel_delta);
     }
 
     // Sets the persistent down/up state for one mouse button.
     void SetButtonDown(MouseButton button, bool down) noexcept
     {
-        buttons_down_[ToIndex(button)] = down;
+        if (IsKnownMouseButton(button))
+        {
+            buttons_down_[ToIndex(button)] = down;
+        }
     }
 
     // Marks a button as newly pressed for the current frame.
     void MarkPressed(MouseButton button) noexcept
     {
-        buttons_pressed_[ToIndex(button)] = true;
+        if (IsKnownMouseButton(button))
+        {
+            buttons_pressed_[ToIndex(button)] = true;
+        }
     }
 
     // Marks a button as newly released for the current frame.
     void MarkReleased(MouseButton button) noexcept
     {
-        buttons_released_[ToIndex(button)] = true;
+        if (IsKnownMouseButton(button))
+        {
+            buttons_released_[ToIndex(button)] = true;
+        }
     }
 
     // Updates cached focus state.
@@ -141,7 +151,21 @@ class MouseState
     }
 
   private:
-    // Maps a mouse button to a safe array index, collapsing invalid values to index zero.
+    // Clamps accumulated input motion to the public 32-bit representation without signed overflow.
+    [[nodiscard]] static constexpr std::int32_t ClampToInt32(std::int64_t value) noexcept
+    {
+        if (value < std::numeric_limits<std::int32_t>::min())
+        {
+            return std::numeric_limits<std::int32_t>::min();
+        }
+        if (value > std::numeric_limits<std::int32_t>::max())
+        {
+            return std::numeric_limits<std::int32_t>::max();
+        }
+        return static_cast<std::int32_t>(value);
+    }
+
+    // Maps a validated mouse button to its backing-array index.
     [[nodiscard]] static constexpr std::size_t ToIndex(MouseButton button) noexcept
     {
         const auto index = static_cast<std::size_t>(button);

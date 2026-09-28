@@ -1,4 +1,4 @@
-﻿add_library(EpidemicRuntimeSupport STATIC
+add_library(EpidemicRuntimeSupport STATIC
     src/runtime_support.cpp
 )
 
@@ -24,7 +24,7 @@ target_link_libraries(EpidemicRuntimeSupport
     PUBLIC EpidemicRuntimePhysics
     PUBLIC EpidemicRuntimeAudio
     PUBLIC EpidemicRuntimeRenderer
-    PRIVATE EpidemicFoundation
+    PUBLIC EpidemicFoundation
 )
 
 epidemic_configure_target(EpidemicRuntimeSupport)

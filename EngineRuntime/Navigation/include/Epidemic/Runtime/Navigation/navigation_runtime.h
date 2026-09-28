@@ -17,6 +17,8 @@ class INavCostProvider
 public:
     virtual ~INavCostProvider() = default;
 
+    // Observational callback. Implementations return a finite, non-negative traversal cost.
+    // Exceptions are contained by Navigation and fail only the affected query.
     [[nodiscard]] virtual float GetTraversalCost(const NavCostQuery& query) const = 0;
 };
 
@@ -25,6 +27,9 @@ class INavigationBackend
 public:
     virtual ~INavigationBackend() = default;
 
+    // Query callback is observational/read-replay-safe. A successful result is accepted by Runtime once and may be
+    // held internally until byte budget permits publication; Runtime-local publication failure must not require a
+    // second BuildPath call. Result failure or exception means no path result was accepted.
     [[nodiscard]] virtual foundation::Result<PathResult> BuildPath(const PathRequest& request, NavigationRevision revision) const = 0;
 };
 
@@ -33,6 +38,7 @@ class INavigationDataSource
 public:
     virtual ~INavigationDataSource() = default;
 
+    // Observational revision read. Exceptions are contained at the Navigation boundary.
     [[nodiscard]] virtual NavigationRevision CurrentRevision(RegionId region) const = 0;
 };
 
@@ -41,6 +47,8 @@ class INavigationObstacleSource
 public:
     virtual ~INavigationObstacleSource() = default;
 
+    // Observational projection. The returned span must remain valid while the current Navigation call consumes it.
+    // Exceptions are contained and fail only the affected path query.
     [[nodiscard]] virtual std::span<const DynamicObstacle> ObstaclesForRegion(RegionId region) const = 0;
 };
 
@@ -67,6 +75,8 @@ public:
 
     [[nodiscard]] virtual foundation::Result<void> CancelPath(PathQueryHandle handle) = 0;
 
+    // Advances queries in deterministic handle order. max_items limits state transitions; max_bytes gates final path
+    // publication by the actual prepared point count. Zero budget fields are unlimited.
     [[nodiscard]] virtual std::size_t Tick(RuntimeBudget budget) = 0;
 
     [[nodiscard]] virtual foundation::Result<PathQueryState> GetPathState(PathQueryHandle handle) const = 0;
